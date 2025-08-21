@@ -1,0 +1,66 @@
+@startuml AWS Trivia Challenge Architecture
+!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v18.0/dist
+!includeurl AWSPuml/AWSCommon.puml
+!includeurl AWSPuml/Compute/Lambda.puml
+!includeurl AWSPuml/Database/ElastiCacheForRedis.puml
+!includeurl AWSPuml/NetworkingContentDelivery/CloudFront.puml
+!includeurl AWSPuml/NetworkingContentDelivery/APIGateway.puml
+!includeurl AWSPuml/Storage/SimpleStorageService.puml
+!includeurl AWSPuml/SecurityIdentityCompliance/Cognito.puml
+!includeurl AWSPuml/NetworkingContentDelivery/VPC.puml
+
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+
+actor Users as users
+
+package "AWS Cloud" {
+    package "Global Services" {
+        CloudFront(cloudfront, "CloudFront CDN", "Global CDN")
+        Cognito(cognito, "User Pool", "Authentication")
+    }
+    
+    package "VPC us-west-2" {
+        package "Public Subnets" {
+            component "Internet Gateway" as igw
+            component "NAT Gateway" as nat
+        }
+        
+        package "Private Subnets" {
+            Lambda(lambda1, "trivia-game", "Main Logic")
+            Lambda(lambda2, "question-preloader", "Cache Questions")
+            ElastiCacheForRedis(valkey, "Valkey Cache", "Session & Questions")
+        }
+        
+        APIGateway(api, "API Gateway", "REST API")
+    }
+    
+    SimpleStorageService(s3, "Frontend Bucket", "Static Website")
+    
+    package "Monitoring" {
+        component "CloudWatch" as cw
+        component "SNS Alerts" as sns
+    }
+}
+
+cloud "External" {
+    component "OpenTDB API" as opentdb
+}
+
+' Connections
+users --> cloudfront
+cloudfront --> s3
+cloudfront --> api
+api --> lambda1
+lambda1 --> valkey
+lambda1 --> cognito
+lambda1 --> nat
+lambda2 --> nat
+nat --> igw
+igw --> opentdb
+lambda2 --> valkey
+lambda1 --> cw
+cw --> sns
+valkey --> cw
+
+@enduml

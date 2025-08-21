@@ -4,26 +4,22 @@ A serverless trivia application built with AWS Lambda and ElastiCache Valkey Ser
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React/HTML    │    │   API Gateway    │    │  AWS Lambda     │
-│   Frontend      │◄──►│  + Cognito Auth  │◄──►│  (Node.js)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                                         │
-                       ┌──────────────────┐             │
-                       │   OpenTDB API    │◄────────────┤
-                       │  (Questions)     │             │
-                       └──────────────────┘             │
-                                                         │
-                       ┌──────────────────┐             │
-                       │ ElastiCache      │◄────────────┘
-                       │ Valkey Serverless│
-                       │ - Questions Cache│
-                       │ - User Sessions  │
-                       │ - Leaderboards   │
-                       │ - Seen Questions │
-                       └──────────────────┘
-```
+![AWS Trivia Challenge Architecture](architecture/aws_trivia_challenge_architecture.png)
+
+### Architecture Overview
+The application follows a serverless architecture pattern with the following key components:
+
+- **CloudFront CDN**: Global content delivery and API routing
+- **S3 Frontend Bucket**: Static website hosting (HTML, JS, CSS)
+- **API Gateway**: REST API endpoint management
+- **Lambda Functions**: Serverless compute (trivia-game, question-preloader)
+- **ElastiCache Valkey Serverless**: In-memory cache for sessions and questions
+- **Cognito User Pool**: User authentication and management
+- **VPC with Public/Private Subnets**: Network isolation and security
+- **NAT Gateway**: Outbound internet access for private Lambda functions
+- **CloudWatch & SNS**: Monitoring, logging, and alerting
+
+For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
 ## ✨ Features
 
@@ -218,5 +214,4 @@ MIT License - feel free to use this for learning and development!
 
 ---
 
-**Built with ❤️ using AWS Lambda and ElastiCache Valkey Serverless**# Deployment ready
-# Deployment ready with GitHub Secrets configured
+**Built with ❤️ using AWS Lambda and ElastiCache Valkey Serverless**

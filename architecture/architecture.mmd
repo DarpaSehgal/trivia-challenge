@@ -1,0 +1,58 @@
+graph TB
+    Users[👥 Users] --> CloudFront[☁️ CloudFront CDN]
+    
+    subgraph "AWS Cloud"
+        subgraph "Global Services"
+            CloudFront --> S3[📦 S3 Frontend]
+            Cognito[🔐 Cognito User Pool]
+        end
+        
+        subgraph "VPC us-west-2"
+            subgraph "Public Subnets"
+                IGW[🌐 Internet Gateway]
+                NAT[🔄 NAT Gateway]
+            end
+            
+            subgraph "Private Subnets"
+                Lambda1[⚡ trivia-game Lambda]
+                Lambda2[⚡ question-preloader Lambda]
+                Valkey[💾 Valkey Cache]
+            end
+            
+            API[🔌 API Gateway]
+        end
+        
+        subgraph "Monitoring"
+            CloudWatch[📊 CloudWatch]
+            SNS[📢 SNS Alerts]
+        end
+    end
+    
+    subgraph "External"
+        OpenTDB[🌍 OpenTDB API]
+    end
+    
+    %% Connections
+    CloudFront --> API
+    API --> Lambda1
+    Lambda1 --> Valkey
+    Lambda1 --> Cognito
+    Lambda1 --> NAT
+    Lambda2 --> NAT
+    NAT --> IGW
+    IGW --> OpenTDB
+    Lambda2 --> Valkey
+    Lambda1 --> CloudWatch
+    CloudWatch --> SNS
+    Valkey --> CloudWatch
+    
+    %% Styling
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef compute fill:#F58536,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef storage fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef network fill:#8C4FFF,stroke:#232F3E,stroke-width:2px,color:#fff
+    
+    class CloudFront,API,IGW,NAT network
+    class Lambda1,Lambda2 compute
+    class S3,Valkey storage
+    class Cognito,CloudWatch,SNS aws
