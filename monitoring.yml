@@ -8,11 +8,40 @@ Parameters:
     Default: admin@example.com
 
 Resources:
+  # KMS Key for SNS Encryption
+  SNSEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for SNS topic encryption
+      KeyPolicy:
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow SNS Service
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+
+  SNSEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/trivia-sns-key
+      TargetKeyId: !Ref SNSEncryptionKey
+
   # SNS Topic for Alerts
   AlertTopic:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: trivia-app-alerts
+      KmsMasterKeyId: !Ref SNSEncryptionKey
       Subscription:
         - Protocol: email
           Endpoint: !Ref NotificationEmail
@@ -28,8 +57,10 @@ Resources:
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 2
+      DatapointsToAlarm: 1
       Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
       Dimensions:
         - Name: FunctionName
           Value: trivia-game
@@ -45,9 +76,11 @@ Resources:
       Namespace: AWS/Lambda
       Statistic: Average
       Period: 300
-      EvaluationPeriods: 2
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
       Threshold: 25000
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
       Dimensions:
         - Name: FunctionName
           Value: trivia-game
@@ -63,9 +96,11 @@ Resources:
       Namespace: AWS/ElastiCache
       Statistic: Average
       Period: 300
-      EvaluationPeriods: 2
-      Threshold: 0
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 1
       ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
       AlarmActions:
         - !Ref AlertTopic
 
