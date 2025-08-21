@@ -32,7 +32,10 @@ jobs:
       
     - name: Clean up failed stack
       run: |
-        if aws cloudformation describe-stacks --stack-name trivia-challenge 2>/dev/null | grep -q ROLLBACK_COMPLETE; then
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name trivia-challenge --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NONE")
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "ROLLBACK_IN_PROGRESS" ]; then
+          echo "Waiting for rollback to complete..."
+          aws cloudformation wait stack-rollback-complete --stack-name trivia-challenge || true
           echo "Deleting failed stack..."
           aws cloudformation delete-stack --stack-name trivia-challenge
           aws cloudformation wait stack-delete-complete --stack-name trivia-challenge
@@ -60,7 +63,7 @@ jobs:
         COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
         COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
         STACK_NAME: trivia-challenge
-        FUNCTION_NAME: trivia-game
+        FUNCTION_NAME: trivia-game-trivia-challenge
       run: ./deploy-simple.sh
       
     - name: Notify deployment failure
@@ -74,7 +77,7 @@ jobs:
       if: success()
       run: |
         aws lambda invoke \
-          --function-name "${FUNCTION_NAME:-trivia-game}" \
+          --function-name "trivia-game-trivia-challenge" \
           --payload '{"httpMethod":"GET","path":"/health"}' \
           health-response.json
         if ! grep -q "healthy" health-response.json; then
@@ -89,13 +92,13 @@ jobs:
         echo "🔄 Rolling back deployment..."
         # Get previous version
         PREVIOUS_VERSION=$(aws lambda list-versions-by-function \
-          --function-name "${FUNCTION_NAME:-trivia-game}" \
+          --function-name "trivia-game-trivia-challenge" \
           --query 'Versions[-2].Version' \
           --output text)
         
         if [ "$PREVIOUS_VERSION" != "None" ] && [ "$PREVIOUS_VERSION" != "\$LATEST" ]; then
           aws lambda update-alias \
-            --function-name "${FUNCTION_NAME:-trivia-game}" \
+            --function-name "trivia-game-trivia-challenge" \
             --name LIVE \
             --function-version "$PREVIOUS_VERSION" || true
           echo "✅ Rollback completed to version $PREVIOUS_VERSION"

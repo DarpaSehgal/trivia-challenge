@@ -42,7 +42,7 @@ Resources:
   TriviaGameFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: trivia-game
+      FunctionName: !Sub 'trivia-game-${AWS::StackName}'
       Runtime: nodejs18.x
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -63,7 +63,7 @@ Resources:
   QuestionPreloaderFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: question-preloader
+      FunctionName: !Sub 'question-preloader-${AWS::StackName}'
       Runtime: nodejs18.x
       Handler: preloader.handler
       Role: !GetAtt LambdaExecutionRole.Arn
