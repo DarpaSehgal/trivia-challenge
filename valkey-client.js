@@ -53,7 +53,7 @@ class ValkeyClient {
         try {
             const client = await this.connect();
             const key = this.getQuestionsKey(category);
-            await this.withTimeout(client.setEx(key, 86400, JSON.stringify(questions)), 2000);
+            await this.withTimeout(client.setEx(key, 604800, JSON.stringify(questions)), 2000);
         } catch (error) {
             console.error('Cache questions failed:', this.sanitizeLogMessage(error.message));
             // Don't throw - graceful degradation
