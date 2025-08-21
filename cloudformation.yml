@@ -181,9 +181,12 @@ Resources:
           - Sid: AllowCloudFrontAccess
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
+              Service: cloudfront.amazonaws.com
             Action: s3:GetObject
             Resource: !Sub '${FrontendBucket}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
 
   # Backup S3 Bucket Policy
   BackupBucketPolicy:
@@ -195,16 +198,23 @@ Resources:
           - Sid: AllowCloudFrontAccess
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
+              Service: cloudfront.amazonaws.com
             Action: s3:GetObject
             Resource: !Sub '${BackupBucket}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
 
-  # CloudFront Origin Access Identity
-  CloudFrontOAI:
-    Type: AWS::CloudFront::OriginAccessIdentity
+  # CloudFront Origin Access Control
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
     Properties:
-      OriginAccessIdentityConfig:
-        Comment: !Sub 'OAI for ${AWS::StackName}'
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-OAC'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+        Description: !Sub 'OAC for ${AWS::StackName}'
 
   # CloudFront Distribution
   CloudFrontDistribution:
@@ -215,11 +225,13 @@ Resources:
           - DomainName: !GetAtt FrontendBucket.RegionalDomainName
             Id: S3Origin
             S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !Ref CloudFrontOAC
           - DomainName: !GetAtt BackupBucket.RegionalDomainName
             Id: S3BackupOrigin
             S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !Ref CloudFrontOAC
         OriginGroups:
           Quantity: 1
           Items:
