@@ -7,7 +7,10 @@ const requiredEnvVars = [
 ];
 
 function validateEnvironment() {
-    const missing = requiredEnvVars.filter(env => !process.env[env] || process.env[env].trim() === '');
+    const missing = requiredEnvVars.filter(env => {
+        const value = process.env[env];
+        return !value || typeof value !== 'string' || value.trim() === '';
+    });
     
     if (missing.length > 0) {
         console.error('❌ Missing required environment variables:', missing);

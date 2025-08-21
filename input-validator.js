@@ -24,11 +24,16 @@ function validateUsername(username) {
 function validateSessionData(data) {
     const errors = [];
     
+    if (!data || typeof data !== 'object') {
+        errors.push('Invalid data object');
+        return { valid: false, errors };
+    }
+    
     if (!data.sessionId || typeof data.sessionId !== 'string') {
         errors.push('Invalid session ID');
     }
     
-    if (data.timeTaken !== undefined && (typeof data.timeTaken !== 'number' || data.timeTaken < 0 || data.timeTaken > 60)) {
+    if (data.timeTaken !== undefined && (typeof data.timeTaken !== 'number' || data.timeTaken < 0 || data.timeTaken > 300)) {
         errors.push('Invalid time taken');
     }
     

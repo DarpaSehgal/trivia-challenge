@@ -1,6 +1,10 @@
 const axios = require('axios');
 const valkeyClient = require('./valkey-client');
 
+function sanitizeLogValue(value) {
+    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+}
+
 class QuestionService {
     constructor() {
         this.lastApiCall = 0;
@@ -77,7 +81,7 @@ class QuestionService {
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
                 ]);
             } catch (error) {
-                console.error('Failed to get seen questions, using empty set:', error);
+                console.error('Failed to get seen questions, using empty set:', sanitizeLogValue(error.message));
             }
             
             // Filter out seen questions

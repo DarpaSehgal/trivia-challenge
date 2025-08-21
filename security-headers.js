@@ -16,7 +16,10 @@ const securityHeaders = {
  * @param {Object} headers - Existing headers object
  * @returns {Object} Headers with security headers added
  */
-function addSecurityHeaders(headers) {
+function addSecurityHeaders(headers = {}) {
+    if (!headers || typeof headers !== 'object') {
+        headers = {};
+    }
     return { ...headers, ...securityHeaders };
 }
 

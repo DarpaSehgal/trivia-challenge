@@ -47,7 +47,7 @@ class ValkeyClient {
     async cacheQuestions(category, questions) {
         try {
             const client = await this.connect();
-            const sanitizedCategory = category.replace(/[^a-zA-Z0-9_-]/g, '');
+            const sanitizedCategory = this.sanitizeCategory(category);
             const key = `valkey:questions:${sanitizedCategory}`;
             await this.withTimeout(client.setEx(key, 86400, JSON.stringify(questions)), 2000);
         } catch (error) {
@@ -66,10 +66,11 @@ class ValkeyClient {
     async getQuestions(category) {
         try {
             const client = await this.connect();
-            const sanitizedCategory = category.replace(/[^a-zA-Z0-9_-]/g, '');
+            const sanitizedCategory = this.sanitizeCategory(category);
             const key = `valkey:questions:${sanitizedCategory}`;
             const cached = await this.withTimeout(client.get(key), 2000);
-            return cached ? this.parseJsonSafely(cached) : null;
+            const result = cached ? this.parseJsonSafely(cached) : null;
+            return result ? this.sanitizeQuestionData(result) : null;
         } catch (error) {
             console.error('Get questions failed:', this.sanitizeLogMessage(error.message));
             return null;
@@ -96,7 +97,8 @@ class ValkeyClient {
     async getSeenQuestions(userId) {
         try {
             const client = await this.connect();
-            const key = `valkey:user:${userId}:seen_questions`;
+            const sanitizedUserId = this.sanitizeUserId(userId);
+            const key = `valkey:user:${sanitizedUserId}:seen_questions`;
             return await this.withTimeout(client.sMembers(key), 2000);
         } catch (error) {
             console.error('Get seen questions failed:', error);
@@ -199,7 +201,8 @@ class ValkeyClient {
     async storeUsername(username, userId) {
         try {
             const client = await this.connect();
-            const key = `valkey:usernames:${username.toLowerCase()}`;
+            const sanitizedUsername = this.sanitizeUsername(username);
+            const key = `valkey:usernames:${sanitizedUsername}`;
             await this.withTimeout(client.set(key, userId), 2000);
         } catch (error) {
             console.error('Store username failed:', error);
@@ -226,6 +229,39 @@ class ValkeyClient {
 
     sanitizeSessionId(sessionId) {
         return String(sessionId).replace(/[^a-zA-Z0-9-]/g, '').substring(0, 50);
+    }
+
+    sanitizeCategory(category) {
+        return String(category).replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 50);
+    }
+
+    sanitizeQuestionData(data) {
+        if (Array.isArray(data)) {
+            return data.map(q => this.sanitizeQuestion(q));
+        }
+        return this.sanitizeQuestion(data);
+    }
+
+    sanitizeQuestion(question) {
+        if (!question || typeof question !== 'object') return question;
+        return {
+            ...question,
+            question: this.escapeHtml(String(question.question || '')),
+            correct_answer: this.escapeHtml(String(question.correct_answer || '')),
+            incorrect_answers: Array.isArray(question.incorrect_answers) 
+                ? question.incorrect_answers.map(a => this.escapeHtml(String(a)))
+                : []
+        };
+    }
+
+    escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/\//g, '&#x2F;');
     }
 
     sanitizeUsername(username) {

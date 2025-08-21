@@ -7,6 +7,10 @@ const { healthCheck } = require('./health-check');
 const config = require('./config');
 const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString } = require('./input-validator');
 
+function sanitizeLogValue(value) {
+    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+}
+
 const rateLimiter = require('./rate-limiter');
 
 exports.handler = async (event) => {
@@ -90,9 +94,9 @@ exports.handler = async (event) => {
         console.error('Error:', error);
         // Log error details for monitoring
         console.error('Request details:', {
-            path: event.path,
-            method: event.httpMethod,
-            userId: extractUserId(event),
+            path: sanitizeLogValue(event.path),
+            method: sanitizeLogValue(event.httpMethod),
+            userId: sanitizeLogValue(extractUserId(event)),
             timestamp: new Date().toISOString()
         });
         return {
@@ -174,10 +178,9 @@ async function startGame(userId, category = 'general', headers) {
     try {
         await valkeyClient.createSession(sessionId, sessionData);
     } catch (error) {
-        console.error('Failed to create session in Valkey, using in-memory:', error);
-        // Store in memory as fallback (this is temporary for this session)
-        global.sessions = global.sessions || {};
-        global.sessions[sessionId] = sessionData;
+        console.error('Failed to create session in Valkey:', sanitizeLogValue(error.message));
+        // Return error instead of using global memory
+        throw new Error('Session storage unavailable');
     }
     
     return {
@@ -215,8 +218,12 @@ async function submitAnswer(userId, requestData, headers) {
     try {
         session = await valkeyClient.getSession(sessionId);
     } catch (error) {
-        console.error('Failed to get session from Valkey, checking memory:', error);
-        session = global.sessions?.[sessionId];
+        console.error('Failed to get session from Valkey:', sanitizeLogValue(error.message));
+        return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({ error: 'Session storage unavailable' })
+        };
     }
     
     if (!session || session.userId !== userId) {
@@ -240,7 +247,8 @@ async function submitAnswer(userId, requestData, headers) {
     
     let questionScore = 0;
     if (isCorrect) {
-        questionScore = 10 + Math.max(0, 5 - timeTaken);
+        const validTimeTaken = Math.max(0, Math.min(30, Number(timeTaken) || 0));
+        questionScore = 10 + Math.max(0, 5 - validTimeTaken);
         session.score += questionScore;
     }
     
@@ -264,10 +272,12 @@ async function submitAnswer(userId, requestData, headers) {
     try {
         await valkeyClient.updateSession(sessionId, session);
     } catch (error) {
-        console.error('Failed to update session in Valkey, updating memory:', error);
-        if (global.sessions) {
-            global.sessions[sessionId] = session;
-        }
+        console.error('Failed to update session in Valkey:', sanitizeLogValue(error.message));
+        return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({ error: 'Session update failed' })
+        };
     }
     
     return {
@@ -282,8 +292,12 @@ async function endSession(userId, sessionId, headers) {
     try {
         session = await valkeyClient.getSession(sessionId);
     } catch (error) {
-        console.error('Failed to get session from Valkey, checking memory:', error);
-        session = global.sessions?.[sessionId];
+        console.error('Failed to get session from Valkey:', sanitizeLogValue(error.message));
+        return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({ error: 'Session storage unavailable' })
+        };
     }
     
     if (!session || session.userId !== userId) {
@@ -302,11 +316,8 @@ async function endSession(userId, sessionId, headers) {
         
         // Clean up session after completion
         await valkeyClient.deleteSession(sessionId);
-        if (global.sessions && global.sessions[sessionId]) {
-            delete global.sessions[sessionId];
-        }
     } catch (error) {
-        console.error('Failed to update leaderboard:', error);
+        console.error('Failed to update leaderboard:', sanitizeLogValue(error.message));
     }
     
     return {

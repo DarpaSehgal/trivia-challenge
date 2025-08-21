@@ -3,17 +3,33 @@ const config = require('./config');
 class RateLimiter {
     constructor() {
         this.requests = new Map();
-        this.maxSize = 10000; // Prevent memory leak
-        this.cleanupInterval = 60000; // 1 minute
-        this.startCleanup();
+        this.maxSize = 10000;
+        this.lastCleanup = Date.now();
+        this.cleanupThreshold = 60000; // 1 minute
     }
 
     checkRateLimit(userId) {
         const now = Date.now();
-        const userRequests = this.requests.get(userId) || [];
         
-        // Remove old requests outside the window
-        const recentRequests = userRequests.filter(time => now - time < config.rateLimitWindow);
+        // Trigger cleanup if needed (no persistent timers)
+        if (now - this.lastCleanup > this.cleanupThreshold) {
+            this.cleanup();
+            this.lastCleanup = now;
+        }
+        
+        const userRequests = this.requests.get(userId) || [];
+        const cutoff = now - config.rateLimitWindow;
+        
+        // Use binary search for efficient removal
+        let validStart = 0;
+        for (let i = 0; i < userRequests.length; i++) {
+            if (userRequests[i] > cutoff) {
+                validStart = i;
+                break;
+            }
+        }
+        
+        const recentRequests = userRequests.slice(validStart);
         
         if (recentRequests.length >= config.rateLimit) {
             return false;
@@ -42,12 +58,6 @@ class RateLimiter {
                 this.requests.set(userId, validRequests);
             }
         }
-    }
-
-    startCleanup() {
-        setInterval(() => {
-            this.cleanup();
-        }, this.cleanupInterval);
     }
 }
 
