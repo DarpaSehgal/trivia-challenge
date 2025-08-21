@@ -38,7 +38,11 @@ jobs:
           --parameter-overrides \
             ValkeySubnetIds=${{ secrets.VALKEY_SUBNET_IDS }} \
             ValkeySecurityGroupId=${{ secrets.VALKEY_SECURITY_GROUP_ID }} \
-          --capabilities CAPABILITY_IAM
+          --capabilities CAPABILITY_IAM || {
+          echo "CloudFormation deployment failed. Getting stack events..."
+          aws cloudformation describe-stack-events --stack-name trivia-challenge --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' --output table
+          exit 1
+        }
           
     - name: Deploy to Lambda
       id: deploy
