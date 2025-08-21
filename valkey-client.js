@@ -47,10 +47,11 @@ class ValkeyClient {
     async cacheQuestions(category, questions) {
         try {
             const client = await this.connect();
-            const key = `valkey:questions:${category}`;
+            const sanitizedCategory = category.replace(/[^a-zA-Z0-9_-]/g, '');
+            const key = `valkey:questions:${sanitizedCategory}`;
             await this.withTimeout(client.setEx(key, 86400, JSON.stringify(questions)), 2000);
         } catch (error) {
-            console.error('Cache questions failed:', error);
+            console.error('Cache questions failed:', this.sanitizeLogMessage(error.message));
             // Don't throw - graceful degradation
         }
     }
@@ -65,11 +66,12 @@ class ValkeyClient {
     async getQuestions(category) {
         try {
             const client = await this.connect();
-            const key = `valkey:questions:${category}`;
+            const sanitizedCategory = category.replace(/[^a-zA-Z0-9_-]/g, '');
+            const key = `valkey:questions:${sanitizedCategory}`;
             const cached = await this.withTimeout(client.get(key), 2000);
-            return cached ? JSON.parse(cached) : null;
+            return cached ? this.parseJsonSafely(cached) : null;
         } catch (error) {
-            console.error('Get questions failed:', error);
+            console.error('Get questions failed:', this.sanitizeLogMessage(error.message));
             return null;
         }
     }
@@ -77,11 +79,17 @@ class ValkeyClient {
     async addSeenQuestion(userId, questionId) {
         try {
             const client = await this.connect();
-            const key = `valkey:user:${userId}:seen_questions`;
-            await this.withTimeout(client.sAdd(key, questionId), 2000);
-            await this.withTimeout(client.expire(key, 604800), 2000);
+            const sanitizedUserId = this.sanitizeUserId(userId);
+            const sanitizedQuestionId = String(questionId).replace(/[^a-zA-Z0-9_-]/g, '');
+            const key = `valkey:user:${sanitizedUserId}:seen_questions`;
+            
+            // Use pipeline for atomic operation
+            const pipeline = client.multi();
+            pipeline.sAdd(key, sanitizedQuestionId);
+            pipeline.expire(key, 604800);
+            await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
-            console.error('Add seen question failed:', error);
+            console.error('Add seen question failed:', this.sanitizeLogMessage(error.message));
         }
     }
 
@@ -96,36 +104,48 @@ class ValkeyClient {
         }
     }
 
-    async createSession(sessionId, data) {
-        try {
-            const client = await this.connect();
-            const key = `valkey:session:${sessionId}`;
-            await this.withTimeout(client.setEx(key, 3600, JSON.stringify(data)), 2000);
-        } catch (error) {
-            console.error('Create session failed:', error);
-            // Don't throw - use in-memory fallback
-        }
-    }
+
 
     async getSession(sessionId) {
         try {
             const client = await this.connect();
-            const key = `valkey:session:${sessionId}`;
+            const sanitizedSessionId = this.sanitizeSessionId(sessionId);
+            const key = `valkey:session:${sanitizedSessionId}`;
             const session = await this.withTimeout(client.get(key), 2000);
-            return session ? JSON.parse(session) : null;
+            return session ? this.parseJsonSafely(session) : null;
         } catch (error) {
-            console.error('Get session failed:', error);
+            console.error('Get session failed:', this.sanitizeLogMessage(error.message));
             return null;
         }
     }
 
-    async updateSession(sessionId, data) {
+    async setSession(sessionId, data, ttl = 3600) {
         try {
             const client = await this.connect();
-            const key = `valkey:session:${sessionId}`;
-            await this.withTimeout(client.setEx(key, 3600, JSON.stringify(data)), 2000);
+            const sanitizedSessionId = this.sanitizeSessionId(sessionId);
+            const key = `valkey:session:${sanitizedSessionId}`;
+            await this.withTimeout(client.setEx(key, ttl, JSON.stringify(data)), 2000);
         } catch (error) {
-            console.error('Update session failed:', error);
+            console.error('Set session failed:', this.sanitizeLogMessage(error.message));
+        }
+    }
+
+    async updateSession(sessionId, data) {
+        return this.setSession(sessionId, data);
+    }
+
+    async createSession(sessionId, data) {
+        return this.setSession(sessionId, data);
+    }
+
+    async deleteSession(sessionId) {
+        try {
+            const client = await this.connect();
+            const sanitizedSessionId = this.sanitizeSessionId(sessionId);
+            const key = `valkey:session:${sanitizedSessionId}`;
+            await this.withTimeout(client.del(key), 2000);
+        } catch (error) {
+            console.error('Delete session failed:', this.sanitizeLogMessage(error.message));
         }
     }
 
@@ -166,11 +186,12 @@ class ValkeyClient {
     async isUsernameAvailable(username) {
         try {
             const client = await this.connect();
-            const key = `valkey:usernames:${username.toLowerCase()}`;
+            const sanitizedUsername = this.sanitizeUsername(username);
+            const key = `valkey:usernames:${sanitizedUsername}`;
             const exists = await this.withTimeout(client.exists(key), 2000);
             return exists === 0;
         } catch (error) {
-            console.error('Check username failed:', error);
+            console.error('Check username failed:', this.sanitizeLogMessage(error.message));
             return true;
         }
     }
@@ -192,6 +213,31 @@ class ValkeyClient {
         } catch (error) {
             console.error('Ping failed:', error);
             throw error;
+        }
+    }
+
+    sanitizeLogMessage(message) {
+        return String(message).replace(/[\r\n\t]/g, ' ').substring(0, 500);
+    }
+
+    sanitizeUserId(userId) {
+        return String(userId).replace(/[^a-zA-Z0-9@._-]/g, '').substring(0, 100);
+    }
+
+    sanitizeSessionId(sessionId) {
+        return String(sessionId).replace(/[^a-zA-Z0-9-]/g, '').substring(0, 50);
+    }
+
+    sanitizeUsername(username) {
+        return String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '').substring(0, 20);
+    }
+
+    parseJsonSafely(jsonString) {
+        try {
+            return JSON.parse(jsonString);
+        } catch (error) {
+            console.error('JSON parse failed:', this.sanitizeLogMessage(error.message));
+            return null;
         }
     }
 

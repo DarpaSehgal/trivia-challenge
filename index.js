@@ -21,6 +21,7 @@ const questionService = require('./question-service');
 const { addSecurityHeaders } = require('./security-headers');
 const { healthCheck } = require('./health-check');
 const config = require('./config');
+const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString } = require('./input-validator');
 
 // Rate limiting with configuration
 const rateLimiter = new Map();
@@ -59,7 +60,18 @@ exports.handler = async (event) => {
     try {
         const path = event.path;
         const method = event.httpMethod;
-        const body = event.body ? JSON.parse(event.body) : {};
+        let body = {};
+        if (event.body) {
+            const parseResult = parseJsonSafely(event.body);
+            if (!parseResult.success) {
+                return {
+                    statusCode: 400,
+                    headers,
+                    body: JSON.stringify({ error: 'Invalid request format' })
+                };
+            }
+            body = parseResult.data;
+        }
         const userId = extractUserId(event);
         
         // Rate limiting
@@ -75,7 +87,7 @@ exports.handler = async (event) => {
             case 'GET /health':
                 return await handleHealthCheck(headers);
             case 'POST /validate-username':
-                return await validateUsername(body.username, headers);
+                return await validateUsernameEndpoint(body.username, headers);
             case 'POST /check-username':
                 return await checkUsernameUniqueness(body.username, headers);
             case 'POST /start-game':
@@ -135,66 +147,27 @@ function extractUserId(event) {
     }
 }
 
-async function validateUsername(username, headers) {
-    if (!username || username.trim().length === 0) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ valid: false, error: 'Username cannot be empty' })
-        };
-    }
-    
-    if (username.length < 2 || username.length > 20) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ valid: false, error: 'Username must be between 2 and 20 characters' })
-        };
-    }
-    
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ valid: false, error: 'Username can only contain letters, numbers, hyphens, and underscores' })
-        };
-    }
-    
+async function validateUsernameEndpoint(username, headers) {
+    const validation = validateUsername(username);
     return {
-        statusCode: 200,
+        statusCode: validation.valid ? 200 : 400,
         headers,
-        body: JSON.stringify({ valid: true })
+        body: JSON.stringify(validation.valid ? { valid: true } : { valid: false, error: validation.error })
     };
 }
 
 async function checkUsernameUniqueness(username, headers) {
-    if (!username || username.trim().length === 0) {
+    const validation = validateUsername(username);
+    if (!validation.valid) {
         return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ available: false, error: 'Username cannot be empty' })
-        };
-    }
-    
-    if (username.length < 2 || username.length > 20) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ available: false, error: 'Username must be 2-20 characters long' })
-        };
-    }
-    
-    // Input sanitization
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ available: false, error: 'Invalid characters in username' })
+            body: JSON.stringify({ available: false, error: validation.error })
         };
     }
     
     try {
-        const isAvailable = await valkeyClient.isUsernameAvailable(username);
+        const isAvailable = await valkeyClient.isUsernameAvailable(validation.sanitized);
         return {
             statusCode: 200,
             headers,
@@ -261,21 +234,23 @@ async function startGame(userId, category = 'general', headers) {
     };
 }
 
-async function submitAnswer(userId, { sessionId, questionId, answer, timeTaken }, headers) {
-    // Input validation
-    if (!sessionId || !questionId || answer === undefined || timeTaken === undefined) {
+async function submitAnswer(userId, requestData, headers) {
+    const validation = validateSessionData(requestData);
+    if (!validation.valid) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: validation.errors.join(', ') })
+        };
+    }
+    
+    const { sessionId, questionId, answer, timeTaken } = requestData;
+    
+    if (!questionId || answer === undefined) {
         return {
             statusCode: 400,
             headers,
             body: JSON.stringify({ error: 'Missing required fields' })
-        };
-    }
-    
-    if (timeTaken < 0 || timeTaken > 60) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Invalid time taken' })
         };
     }
     let session;
@@ -291,6 +266,14 @@ async function submitAnswer(userId, { sessionId, questionId, answer, timeTaken }
             statusCode: 400,
             headers,
             body: JSON.stringify({ error: 'Invalid session' })
+        };
+    }
+    
+    if (session.currentQuestion >= session.questions.length) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid question index' })
         };
     }
     
@@ -354,10 +337,16 @@ async function endSession(userId, sessionId, headers) {
     }
     
     // Add to leaderboard and store username
-    const username = session.username || userId.split('@')[0] || userId;
+    const username = session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
     try {
         await valkeyClient.addToLeaderboard(session.score, userId, username);
         await valkeyClient.storeUsername(username, userId);
+        
+        // Clean up session after completion
+        await valkeyClient.deleteSession(sessionId);
+        if (global.sessions && global.sessions[sessionId]) {
+            delete global.sessions[sessionId];
+        }
     } catch (error) {
         console.error('Failed to update leaderboard:', error);
     }
@@ -383,9 +372,9 @@ async function getLeaderboard(headers) {
     } catch (error) {
         console.error('Failed to get leaderboard:', error);
         return {
-            statusCode: 200,
+            statusCode: 503,
             headers,
-            body: JSON.stringify({ leaderboard: [] })
+            body: JSON.stringify({ error: 'Leaderboard temporarily unavailable', leaderboard: [] })
         };
     }
 }

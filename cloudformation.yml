@@ -68,7 +68,7 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: trivia-valkey-cache-aqqfjm.serverless.usw2.cache.amazonaws.com
+          VALKEY_HOST: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
@@ -89,7 +89,7 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: trivia-valkey-cache-aqqfjm.serverless.usw2.cache.amazonaws.com
+          VALKEY_HOST: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
@@ -112,10 +112,19 @@ Resources:
         IndexDocument: index.html
         ErrorDocument: index.html
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
-        IgnorePublicAcls: false
-        RestrictPublicBuckets: false
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
 
   # S3 Bucket Policy
   FrontendBucketPolicy:
@@ -124,9 +133,10 @@ Resources:
       Bucket: !Ref FrontendBucket
       PolicyDocument:
         Statement:
-          - Sid: PublicReadGetObject
+          - Sid: AllowCloudFrontAccess
             Effect: Allow
-            Principal: '*'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
             Action: s3:GetObject
             Resource: !Sub '${FrontendBucket}/*'
 
@@ -182,7 +192,7 @@ Outputs:
 
   ValkeyEndpoint:
     Description: Valkey Serverless Cache Endpoint
-    Value: !GetAtt ValkeyServerlessCache.Endpoint
+    Value: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
     Export:
       Name: !Sub '${AWS::StackName}-ValkeyEndpoint'
 

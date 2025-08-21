@@ -9,6 +9,12 @@ if [ -z "$VALKEY_HOST" ] || [ -z "$COGNITO_USER_POOL_ID" ] || [ -z "$COGNITO_CLI
     exit 1
 fi
 
+# Validate AWS credentials
+if ! aws sts get-caller-identity >/dev/null 2>&1; then
+    echo "❌ AWS credentials not configured"
+    exit 1
+fi
+
 # Build production package
 echo "📦 Building production package..."
 rm -rf dist/
@@ -20,17 +26,23 @@ cd ..
 
 # Deploy Lambda
 echo "🔧 Deploying Lambda function..."
-zip -r trivia-production.zip dist/ -x "*.git*" "node_modules/.cache/*"
+zip -r trivia-production.zip ./dist/ -x "*.git*" "node_modules/.cache/*"
 
 aws lambda update-function-code \
     --function-name trivia-game \
-    --zip-file fileb://trivia-production.zip
+    --zip-file fileb://trivia-production.zip || {
+    echo "❌ Lambda code update failed"
+    exit 1
+}
 
 aws lambda update-function-configuration \
     --function-name trivia-game \
-    --environment Variables='{"VALKEY_HOST":"'$VALKEY_HOST'","COGNITO_USER_POOL_ID":"'$COGNITO_USER_POOL_ID'","COGNITO_CLIENT_ID":"'$COGNITO_CLIENT_ID'","NODE_ENV":"production"}' \
+    --environment "Variables={VALKEY_HOST=$VALKEY_HOST,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID,NODE_ENV=production}" \
     --timeout 30 \
-    --memory-size 256
+    --memory-size 256 || {
+    echo "❌ Lambda configuration update failed"
+    exit 1
+}
 
 # Wait for deployment
 echo "⏳ Waiting for deployment..."
