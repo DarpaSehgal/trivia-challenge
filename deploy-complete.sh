@@ -24,22 +24,22 @@ aws cloudformation deploy \
 
 echo "📋 Getting infrastructure outputs..."
 BUCKET_NAME=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+  --stack-name "trivia-challenge" \
+  --query "Stacks[0].Outputs[?OutputKey==\`FrontendBucketName\`].OutputValue" \
   --output text)
 
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
+  --stack-name "trivia-challenge" \
+  --query "Stacks[0].Outputs[?OutputKey==\`CloudFrontURL\`].OutputValue" \
   --output text)
 
 VALKEY_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`ValkeyEndpoint`].OutputValue' \
+  --stack-name "trivia-challenge" \
+  --query "Stacks[0].Outputs[?OutputKey==\`ValkeyEndpoint\`].OutputValue" \
   --output text)
 
 echo "⬆️  Uploading frontend..."
-aws s3 cp frontend/index.html s3://$BUCKET_NAME/ --content-type "text/html"
+aws s3 cp frontend/index.html "s3://${BUCKET_NAME}/" --content-type "text/html"
 
 echo "🔧 Deploying Lambda function..."
 ./deploy.sh

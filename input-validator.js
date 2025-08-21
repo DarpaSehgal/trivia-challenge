@@ -1,7 +1,7 @@
 // Input validation and sanitization utilities
 function sanitizeString(input) {
     if (typeof input !== 'string') return '';
-    return input.replace(/[\r\n\t]/g, ' ').trim().substring(0, 1000);
+    return input.replace(/[\r\n\t]/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 1000);
 }
 
 function validateUsername(username) {

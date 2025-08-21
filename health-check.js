@@ -9,8 +9,10 @@ async function healthCheck() {
 
     // Check Valkey connection
     try {
+        const startTime = Date.now();
         await valkeyClient.ping();
-        checks.checks.valkey = { status: 'healthy', latency: Date.now() };
+        const latency = Date.now() - startTime;
+        checks.checks.valkey = { status: 'healthy', latency: `${latency}ms` };
     } catch (error) {
         checks.checks.valkey = { status: 'unhealthy', error: error.message };
         checks.status = 'unhealthy';
