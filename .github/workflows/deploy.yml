@@ -27,6 +27,9 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-west-2
         
+    - name: Make deploy script executable
+      run: chmod +x deploy.sh
+      
     - name: Deploy to Lambda
       env:
         VALKEY_HOST: ${{ secrets.VALKEY_HOST }}

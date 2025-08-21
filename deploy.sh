@@ -30,12 +30,7 @@ if [ ! -z "$VALKEY_HOST" ]; then
     aws lambda update-function-configuration \
         --region us-west-2 \
         --function-name trivia-game \
-        --environment Variables="{
-            VALKEY_HOST=$VALKEY_HOST,
-            COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,
-            COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID,
-            AWS_REGION=us-west-2
-        }"
+        --environment Variables="{\"VALKEY_HOST\":\"$VALKEY_HOST\",\"COGNITO_USER_POOL_ID\":\"$COGNITO_USER_POOL_ID\",\"COGNITO_CLIENT_ID\":\"$COGNITO_CLIENT_ID\",\"AWS_REGION\":\"us-west-2\"}"
 fi
 
 # Test deployment
