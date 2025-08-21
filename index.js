@@ -331,6 +331,125 @@ async function submitAnswer(userId, { sessionId, questionId, answer, timeTaken }
 }
 
 async function endSession(userId, sessionId, headers) {
+    let session;
+    try {
+        session = await valkeyClient.getSession(sessionId);
+    } catch (error) {
+        console.error('Failed to get session from Valkey, checking memory:', error);
+        session = global.sessions?.[sessionId];
+    }
+    
+    if (!session || session.userId !== userId) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid session' })
+        };
+    }
+    
+    // Add to leaderboard and store username
+    const username = session.username || userId.split('@')[0] || userId;
+    try {
+        await valkeyClient.addToLeaderboard(session.score, userId, username);
+        await valkeyClient.storeUsername(username, userId);
+    } catch (error) {
+        console.error('Failed to update leaderboard:', error);
+    }
+    
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            finalScore: session.score,
+            message: 'Session completed successfully'
+        })
+    };
+}
+
+async function getLeaderboard(headers) {
+    try {
+        const leaderboard = await valkeyClient.getLeaderboard();
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ leaderboard })
+        };
+    } catch (error) {
+        console.error('Failed to get leaderboard:', error);
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ leaderboard: [] })
+        };
+    }
+}
+
+function shuffleOptions(options) {
+    const shuffled = [...options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}ession;
+    try {
+        session = await valkeyClient.getSession(sessionId);
+    } catch (error) {
+        console.error('Failed to get session from Valkey, checking memory:', error);
+        session = global.sessions?.[sessionId];
+    }
+    
+    if (!session || session.userId !== userId) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid session' })
+        };
+    }
+    
+    const currentQ = session.questions[session.currentQuestion];
+    const isCorrect = answer === currentQ.correct_answer;
+    
+    let questionScore = 0;
+    if (isCorrect) {
+        questionScore = 10 + Math.max(0, 5 - timeTaken);
+        session.score += questionScore;
+    }
+    
+    session.currentQuestion++;
+    
+    const response = {
+        correct: isCorrect,
+        correctAnswer: currentQ.correct_answer,
+        score: questionScore,
+        totalScore: session.score
+    };
+    
+    if (session.currentQuestion < session.questions.length) {
+        response.nextQuestion = session.questions[session.currentQuestion];
+        response.questionNumber = session.currentQuestion + 1;
+        response.totalQuestions = 5;
+    } else {
+        response.gameComplete = true;
+    }
+    
+    try {
+        await valkeyClient.updateSession(sessionId, session);
+    } catch (error) {
+        console.error('Failed to update session in Valkey, updating memory:', error);
+        if (global.sessions) {
+            global.sessions[sessionId] = session;
+        }
+    }
+    
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(response)
+    };
+}
+
+async function endSession(userId, sessionId, headers) {
     const session = await valkeyClient.getSession(sessionId);
     if (!session || session.userId !== userId) {
         return {
