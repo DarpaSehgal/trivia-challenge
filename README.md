@@ -21,36 +21,6 @@ The application follows a serverless architecture pattern with the following key
 
 For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
-### Data Flow Explanation
-
-The numbered flow in the diagram shows the complete user journey:
-
-**❶ User Access** - Users access the trivia application through CloudFront CDN for global performance
-
-**❷ Static Content** - CloudFront serves static files (HTML, CSS, JS) from S3 Frontend Bucket
-
-**❸ API Requests** - API calls are routed from CloudFront to API Gateway for serverless processing
-
-**❹ Lambda Invocation** - API Gateway invokes the trivia-game Lambda function in private subnets
-
-**❺ Authentication** - Lambda authenticates users via Cognito User Pool for secure access
-
-**❻ Cache Operations** - Lambda reads/writes session data and questions to ElastiCache Valkey Serverless
-
-**❼ Question Preloading** - Separate Lambda function caches fresh questions from external API
-
-**❽-❾ NAT Gateway** - Lambda functions route through NAT Gateway for secure internet access
-
-**❿ Internet Gateway** - NAT Gateway connects to Internet Gateway for external API calls
-
-**⓫ External API** - Fetches trivia questions from OpenTDB API when cache needs refresh
-
-**⓬-⓭ Response Path** - API responses flow back through the same secure network path
-
-**⓮-⓯ Monitoring** - Lambda functions and Valkey send performance metrics to CloudWatch
-
-**⓰ Alerting** - CloudWatch triggers SNS alerts for operational issues and thresholds
-
 ## ✨ Features
 
 ### 🎯 Core Functionality
