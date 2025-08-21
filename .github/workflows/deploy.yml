@@ -30,6 +30,16 @@ jobs:
     - name: Make deploy script executable
       run: chmod +x deploy-simple.sh
       
+    - name: Deploy Infrastructure
+      run: |
+        aws cloudformation deploy \
+          --template-file cloudformation.yml \
+          --stack-name trivia-challenge \
+          --parameter-overrides \
+            ValkeySubnetIds=${{ secrets.VALKEY_SUBNET_IDS }} \
+            ValkeySecurityGroupId=${{ secrets.VALKEY_SECURITY_GROUP_ID }} \
+          --capabilities CAPABILITY_IAM
+          
     - name: Deploy to Lambda
       id: deploy
       env:
