@@ -1,8 +1,11 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
+const { promisify } = require('util');
 
 const client = jwksClient({
-    jwksUri: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`
+    jwksUri: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`,
+    cache: true,
+    cacheMaxAge: 600000 // 10 minutes
 });
 
 function getKey(header, callback) {
@@ -16,19 +19,13 @@ function getKey(header, callback) {
     });
 }
 
+const jwtVerifyAsync = promisify(jwt.verify);
+
 async function verifyToken(token) {
-    return new Promise((resolve, reject) => {
-        jwt.verify(token, getKey, {
-            audience: process.env.COGNITO_CLIENT_ID,
-            issuer: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-            algorithms: ['RS256']
-        }, (err, decoded) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(decoded);
-            }
-        });
+    return await jwtVerifyAsync(token, getKey, {
+        audience: process.env.COGNITO_CLIENT_ID,
+        issuer: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
+        algorithms: ['RS256']
     });
 }
 

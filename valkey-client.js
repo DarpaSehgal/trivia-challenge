@@ -44,11 +44,15 @@ class ValkeyClient {
         return this.client;
     }
 
+    getQuestionsKey(category) {
+        const sanitizedCategory = this.sanitizeCategory(category);
+        return `valkey:questions:${sanitizedCategory}`;
+    }
+
     async cacheQuestions(category, questions) {
         try {
             const client = await this.connect();
-            const sanitizedCategory = this.sanitizeCategory(category);
-            const key = `valkey:questions:${sanitizedCategory}`;
+            const key = this.getQuestionsKey(category);
             await this.withTimeout(client.setEx(key, 86400, JSON.stringify(questions)), 2000);
         } catch (error) {
             console.error('Cache questions failed:', this.sanitizeLogMessage(error.message));
@@ -66,8 +70,7 @@ class ValkeyClient {
     async getQuestions(category) {
         try {
             const client = await this.connect();
-            const sanitizedCategory = this.sanitizeCategory(category);
-            const key = `valkey:questions:${sanitizedCategory}`;
+            const key = this.getQuestionsKey(category);
             const cached = await this.withTimeout(client.get(key), 2000);
             const result = cached ? this.parseJsonSafely(cached) : null;
             return result ? this.sanitizeQuestionData(result) : null;

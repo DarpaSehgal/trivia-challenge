@@ -153,6 +153,24 @@ Resources:
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
 
+  # Backup S3 Bucket for Failover
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'trivia-app-backup-${AWS::AccountId}-${AWS::Region}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
   # S3 Bucket Policy
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -166,6 +184,20 @@ Resources:
               AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
             Action: s3:GetObject
             Resource: !Sub '${FrontendBucket}/*'
+
+  # Backup S3 Bucket Policy
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
+            Action: s3:GetObject
+            Resource: !Sub '${BackupBucket}/*'
 
   # CloudFront Origin Access Identity
   CloudFrontOAI:
@@ -184,11 +216,28 @@ Resources:
             Id: S3Origin
             S3OriginConfig:
               OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+          - DomainName: !GetAtt BackupBucket.RegionalDomainName
+            Id: S3BackupOrigin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+        OriginGroups:
+          Quantity: 1
+          Items:
+            - Id: S3OriginGroup
+              FailoverCriteria:
+                StatusCodes:
+                  Quantity: 3
+                  Items: [403, 404, 500]
+              Members:
+                Quantity: 2
+                Items:
+                  - OriginId: S3Origin
+                  - OriginId: S3BackupOrigin
         Enabled: true
         DefaultRootObject: index.html
         Comment: Trivia App CloudFront Distribution
         DefaultCacheBehavior:
-          TargetOriginId: S3Origin
+          TargetOriginId: S3OriginGroup
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
             - GET
