@@ -103,6 +103,76 @@ Resources:
       Name: trivia-challenge-api
       Description: API for trivia challenge application
 
+  # S3 Bucket for Frontend
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'trivia-app-${AWS::AccountId}-${AWS::Region}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  # S3 Bucket Policy
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket}/*'
+
+  # CloudFront Origin Access Identity
+  CloudFrontOAI:
+    Type: AWS::CloudFront::OriginAccessIdentity
+    Properties:
+      OriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${AWS::StackName}'
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+        Enabled: true
+        DefaultRootObject: index.html
+        Comment: Trivia App CloudFront Distribution
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          Compress: true
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+
 Outputs:
   ValkeyServerlessCacheName:
     Description: Valkey Serverless Cache Name
@@ -110,8 +180,32 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ValkeyServerlessCacheName'
 
+  ValkeyEndpoint:
+    Description: Valkey Serverless Cache Endpoint
+    Value: !GetAtt ValkeyServerlessCache.Endpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-ValkeyEndpoint'
+
   ApiGatewayId:
     Description: API Gateway ID
     Value: !Ref TriviaApi
     Export:
       Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  FrontendBucketName:
+    Description: S3 Bucket Name for Frontend
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendBucketName'
+
+  CloudFrontURL:
+    Description: CloudFront Distribution URL
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontURL'
+
+  BucketWebsiteURL:
+    Description: S3 Website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketWebsiteURL'

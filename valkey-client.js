@@ -185,6 +185,16 @@ class ValkeyClient {
         }
     }
 
+    async ping() {
+        try {
+            const client = await this.connect();
+            return await this.withTimeout(client.ping(), 2000);
+        } catch (error) {
+            console.error('Ping failed:', error);
+            throw error;
+        }
+    }
+
     getWeekNumber(date) {
         const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
         const pastDaysOfYear = (date - firstDayOfYear) / 86400000;

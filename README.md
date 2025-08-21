@@ -68,7 +68,27 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_IAM
 ```
 
-### 3. Configure Environment
+### 3. Deploy Frontend
+```bash
+# Get S3 bucket name from CloudFormation
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+  --output text)
+
+# Upload frontend to S3
+aws s3 cp frontend/index.html s3://$BUCKET_NAME/ --content-type "text/html"
+
+# Get CloudFront URL
+CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
+  --output text)
+
+echo "🎉 App deployed at: $CLOUDFRONT_URL"
+```
+
+### 4. Configure Environment
 ```bash
 export VALKEY_HOST=$(aws cloudformation describe-stacks \
   --stack-name trivia-challenge \
@@ -86,7 +106,7 @@ export COGNITO_CLIENT_ID=$(aws cloudformation describe-stacks \
   --output text)
 ```
 
-### 4. Deploy Lambda Functions
+### 5. Deploy Lambda Functions
 ```bash
 # Using Serverless Framework
 serverless deploy
@@ -98,7 +118,7 @@ aws lambda update-function-code \
   --zip-file fileb://trivia-app.zip
 ```
 
-### 5. Test the Application
+### 6. Test the Application
 ```bash
 # Open frontend/index.html in browser
 # Or serve locally:

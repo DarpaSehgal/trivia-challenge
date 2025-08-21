@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Production Monitoring and Alerting for Trivia App'
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Description: Email for alerts
+    Default: admin@example.com
+
+Resources:
+  # SNS Topic for Alerts
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: trivia-app-alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Alarms
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: trivia-lambda-errors
+      AlarmDescription: Lambda function errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: trivia-game
+      AlarmActions:
+        - !Ref AlertTopic
+
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: trivia-lambda-duration
+      AlarmDescription: Lambda function duration
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 25000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: trivia-game
+      AlarmActions:
+        - !Ref AlertTopic
+
+  ValkeyConnectionAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: valkey-connection-errors
+      AlarmDescription: Valkey connection failures
+      MetricName: ConnectionCount
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  # Log Groups
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/trivia-game
+      RetentionInDays: 30
+
+  # Dashboard
+  TriviaAppDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: TriviaAppMetrics
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "trivia-game"],
+                  [".", "Errors", ".", "."],
+                  [".", "Duration", ".", "."]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Lambda Metrics"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS Topic ARN for alerts
+    Value: !Ref AlertTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlertTopic'

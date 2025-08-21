@@ -18,11 +18,14 @@ function getKey(header, callback) {
 }
 const valkeyClient = require('./valkey-client');
 const questionService = require('./question-service');
+const { addSecurityHeaders } = require('./security-headers');
+const { healthCheck } = require('./health-check');
+const config = require('./config');
 
-// Simple in-memory rate limiting (production should use Redis)
+// Rate limiting with configuration
 const rateLimiter = new Map();
-const RATE_LIMIT = 100; // requests per minute
-const RATE_WINDOW = 60000; // 1 minute
+const RATE_LIMIT = config.rateLimit;
+const RATE_WINDOW = config.rateLimitWindow;
 
 function checkRateLimit(userId) {
     const now = Date.now();
@@ -41,12 +44,13 @@ function checkRateLimit(userId) {
 }
 
 exports.handler = async (event) => {
-    const headers = {
+    const baseHeaders = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
     };
+    const headers = addSecurityHeaders(baseHeaders);
 
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 200, headers, body: '' };
@@ -68,6 +72,8 @@ exports.handler = async (event) => {
         }
 
         switch (`${method} ${path}`) {
+            case 'GET /health':
+                return await handleHealthCheck(headers);
             case 'POST /validate-username':
                 return await validateUsername(body.username, headers);
             case 'POST /check-username':
@@ -384,104 +390,25 @@ async function getLeaderboard(headers) {
     }
 }
 
-function shuffleOptions(options) {
-    const shuffled = [...options];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-}ession;
+async function handleHealthCheck(headers) {
     try {
-        session = await valkeyClient.getSession(sessionId);
-    } catch (error) {
-        console.error('Failed to get session from Valkey, checking memory:', error);
-        session = global.sessions?.[sessionId];
-    }
-    
-    if (!session || session.userId !== userId) {
+        const health = await healthCheck();
         return {
-            statusCode: 400,
+            statusCode: health.status === 'healthy' ? 200 : 503,
             headers,
-            body: JSON.stringify({ error: 'Invalid session' })
+            body: JSON.stringify(health)
+        };
+    } catch (error) {
+        return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({
+                status: 'unhealthy',
+                error: error.message,
+                timestamp: new Date().toISOString()
+            })
         };
     }
-    
-    const currentQ = session.questions[session.currentQuestion];
-    const isCorrect = answer === currentQ.correct_answer;
-    
-    let questionScore = 0;
-    if (isCorrect) {
-        questionScore = 10 + Math.max(0, 5 - timeTaken);
-        session.score += questionScore;
-    }
-    
-    session.currentQuestion++;
-    
-    const response = {
-        correct: isCorrect,
-        correctAnswer: currentQ.correct_answer,
-        score: questionScore,
-        totalScore: session.score
-    };
-    
-    if (session.currentQuestion < session.questions.length) {
-        response.nextQuestion = session.questions[session.currentQuestion];
-        response.questionNumber = session.currentQuestion + 1;
-        response.totalQuestions = 5;
-    } else {
-        response.gameComplete = true;
-    }
-    
-    try {
-        await valkeyClient.updateSession(sessionId, session);
-    } catch (error) {
-        console.error('Failed to update session in Valkey, updating memory:', error);
-        if (global.sessions) {
-            global.sessions[sessionId] = session;
-        }
-    }
-    
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(response)
-    };
-}
-
-async function endSession(userId, sessionId, headers) {
-    const session = await valkeyClient.getSession(sessionId);
-    if (!session || session.userId !== userId) {
-        return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Invalid session' })
-        };
-    }
-    
-    // Add to leaderboard and store username
-    const username = session.username || userId.split('@')[0] || userId;
-    await valkeyClient.addToLeaderboard(session.score, userId, username);
-    await valkeyClient.storeUsername(username, userId);
-    
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            finalScore: session.score,
-            message: 'Session completed successfully'
-        })
-    };
-}
-
-async function getLeaderboard(headers) {
-    const leaderboard = await valkeyClient.getLeaderboard();
-    
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ leaderboard })
-    };
 }
 
 function shuffleOptions(options) {
