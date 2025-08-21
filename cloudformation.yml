@@ -119,7 +119,7 @@ Resources:
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: trivia-app-frontend-bucket
+      BucketName: !Sub 'trivia-app-frontend-${AWS::AccountId}-${AWS::Region}'
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html
