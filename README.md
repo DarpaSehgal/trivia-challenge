@@ -219,3 +219,4 @@ MIT License - feel free to use this for learning and development!
 ---
 
 **Built with ❤️ using AWS Lambda and ElastiCache Valkey Serverless**# Deployment ready
+# Deployment ready with GitHub Secrets configured
