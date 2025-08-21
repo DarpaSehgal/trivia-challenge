@@ -84,8 +84,9 @@ class QuestionService {
                 console.error('Failed to get seen questions, using empty set:', sanitizeLogValue(error.message));
             }
             
-            // Filter out seen questions
-            const unseenQuestions = allQuestions.filter(q => !seenQuestions.includes(q.id));
+            // Filter out seen questions using Set for O(1) lookup
+            const seenQuestionsSet = new Set(seenQuestions);
+            const unseenQuestions = allQuestions.filter(q => !seenQuestionsSet.has(q.id));
             
             // If less than 5 unseen questions, just use all questions
             if (unseenQuestions.length < 5) {

@@ -152,13 +152,11 @@ async function startGame(userId, category = 'general', headers) {
     const sessionId = uuidv4();
     const questions = await questionService.getGameQuestions(userId, category);
     
-    // Mark questions as seen (with error handling)
+    // Mark questions as seen (batch operation)
     try {
-        for (const question of questions) {
-            await valkeyClient.addSeenQuestion(userId, question.id);
-        }
+        await valkeyClient.addSeenQuestions(userId, questions.map(q => q.id));
     } catch (error) {
-        console.error('Failed to mark questions as seen:', error);
+        console.error('Failed to mark questions as seen:', sanitizeLogValue(error.message));
     }
     
     const sessionData = {

@@ -94,6 +94,23 @@ class ValkeyClient {
         }
     }
 
+    async addSeenQuestions(userId, questionIds) {
+        try {
+            const client = await this.connect();
+            const sanitizedUserId = this.sanitizeUserId(userId);
+            const sanitizedQuestionIds = questionIds.map(id => String(id).replace(/[^a-zA-Z0-9_-]/g, ''));
+            const key = `valkey:user:${sanitizedUserId}:seen_questions`;
+            
+            // Batch operation using pipeline
+            const pipeline = client.multi();
+            pipeline.sAdd(key, ...sanitizedQuestionIds);
+            pipeline.expire(key, 604800);
+            await this.withTimeout(pipeline.exec(), 2000);
+        } catch (error) {
+            console.error('Add seen questions failed:', this.sanitizeLogMessage(error.message));
+        }
+    }
+
     async getSeenQuestions(userId) {
         try {
             const client = await this.connect();

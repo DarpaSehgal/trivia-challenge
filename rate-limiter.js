@@ -17,26 +17,24 @@ class RateLimiter {
             this.lastCleanup = now;
         }
         
-        const userRequests = this.requests.get(userId) || [];
+        let userRequests = this.requests.get(userId) || [];
         const cutoff = now - config.rateLimitWindow;
         
-        // Use binary search for efficient removal
-        let validStart = 0;
-        for (let i = 0; i < userRequests.length; i++) {
-            if (userRequests[i] > cutoff) {
-                validStart = i;
-                break;
+        // Remove expired requests in-place to avoid array creation
+        let writeIndex = 0;
+        for (let readIndex = 0; readIndex < userRequests.length; readIndex++) {
+            if (userRequests[readIndex] > cutoff) {
+                userRequests[writeIndex++] = userRequests[readIndex];
             }
         }
+        userRequests.length = writeIndex;
         
-        const recentRequests = userRequests.slice(validStart);
-        
-        if (recentRequests.length >= config.rateLimit) {
+        if (userRequests.length >= config.rateLimit) {
             return false;
         }
         
-        recentRequests.push(now);
-        this.requests.set(userId, recentRequests);
+        userRequests.push(now);
+        this.requests.set(userId, userRequests);
         
         // Prevent memory leak
         if (this.requests.size > this.maxSize) {
