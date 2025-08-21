@@ -28,7 +28,7 @@ jobs:
         aws-region: us-west-2
         
     - name: Make deploy script executable
-      run: chmod +x deploy.sh
+      run: chmod +x deploy-simple.sh
       
     - name: Deploy to Lambda
       id: deploy
@@ -36,7 +36,9 @@ jobs:
         VALKEY_HOST: ${{ secrets.VALKEY_HOST }}
         COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
         COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
-      run: ./deploy.sh
+        STACK_NAME: trivia-challenge
+        FUNCTION_NAME: trivia-game
+      run: ./deploy-simple.sh
       
     - name: Notify deployment failure
       if: failure()
@@ -49,7 +51,7 @@ jobs:
       if: success()
       run: |
         aws lambda invoke \
-          --function-name trivia-game \
+          --function-name "${FUNCTION_NAME:-trivia-game}" \
           --payload '{"httpMethod":"GET","path":"/health"}' \
           health-response.json
         if ! grep -q "healthy" health-response.json; then
@@ -64,13 +66,13 @@ jobs:
         echo "🔄 Rolling back deployment..."
         # Get previous version
         PREVIOUS_VERSION=$(aws lambda list-versions-by-function \
-          --function-name trivia-game \
+          --function-name "${FUNCTION_NAME:-trivia-game}" \
           --query 'Versions[-2].Version' \
           --output text)
         
         if [ "$PREVIOUS_VERSION" != "None" ] && [ "$PREVIOUS_VERSION" != "\$LATEST" ]; then
           aws lambda update-alias \
-            --function-name trivia-game \
+            --function-name "${FUNCTION_NAME:-trivia-game}" \
             --name LIVE \
             --function-version "$PREVIOUS_VERSION" || true
           echo "✅ Rollback completed to version $PREVIOUS_VERSION"
