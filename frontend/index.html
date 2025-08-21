@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Challenge</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8e44ad 100%);
+            min-height: 100vh; color: #333;
+        }
+        .container { 
+            text-align: center; 
+            background: white;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(142, 68, 173, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(142, 68, 173, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(142, 68, 173, 0.03) 0%, transparent 50%);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            margin: 20px auto;
+            max-width: 800px;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡ 🤔 💡 🎆 🏆 ✨ 🎯 🚀 🎮 🌟 ⚡';
+            position: absolute;
+            top: -30px; left: -30px; right: -30px; bottom: -30px;
+            font-size: 18px;
+            opacity: 0.08;
+            pointer-events: none;
+            word-wrap: break-word;
+            line-height: 2;
+            padding: 40px;
+            z-index: 0;
+
+        }
+        .container > * {
+            position: relative;
+            z-index: 1;
+        }
+        h1 { 
+            font-family: 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif; 
+            font-size: 2.875em; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8e44ad 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 30px; 
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+        .question-card { 
+            padding: 20px; margin: 20px 0; 
+            color: #333;
+        }
+        .options { display: grid; gap: 15px; margin: 25px 0 15px 0; }
+        .option { 
+            padding: 15px 20px; 
+            background: linear-gradient(145deg, #b19cd9, #c8a2c8); 
+            color: white; border: none; border-radius: 15px; cursor: pointer;
+            font-size: 16px; font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .option:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .option.correct { 
+            background: linear-gradient(145deg, #56ab2f, #a8e6cf);
+            animation: correctPulse 0.6s ease;
+        }
+        .option.incorrect { 
+            background: linear-gradient(145deg, #ff416c, #ff4b2b);
+            animation: incorrectShake 0.6s ease;
+        }
+        @keyframes correctPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes incorrectShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .score { 
+            font-size: 20px; font-weight: bold; 
+            color: #8e44ad;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 0 15px;
+        }
+        .leaderboard { 
+            text-align: left; 
+            background: linear-gradient(145deg, #f8f9ff, #ffffff); 
+            padding: 20px 30px; border-radius: 20px;
+            color: #333; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.15);
+            border: 2px solid rgba(142, 68, 173, 0.1);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive, sans-serif;
+        }
+        .leaderboard ol {
+            font-size: 18px; line-height: 2.2; margin: 0; padding-left: 30px;
+        }
+        .leaderboard li {
+            padding: 8px 0; border-bottom: 1px solid rgba(142, 68, 173, 0.1);
+            font-weight: 500;
+        }
+        .leaderboard li:last-child {
+            border-bottom: none;
+        }
+        .podium {
+            display: flex; justify-content: center; align-items: end;
+            margin: 30px 0; gap: 20px;
+        }
+        .podium-container {
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .podium-place {
+            text-align: center; padding: 15px 10px;
+            background: linear-gradient(145deg, #f8f9ff, #ffffff);
+            border-radius: 15px 15px 0 0; box-shadow: 0 5px 15px rgba(142, 68, 173, 0.1);
+            min-width: 100px; margin-bottom: 0;
+        }
+        .podium-base {
+            width: 140px; border-radius: 0;
+            background: 
+                repeating-linear-gradient(90deg, #8B4513 0px, #A0522D 2px, #8B4513 4px),
+                linear-gradient(180deg, #D2691E 0%, #8B4513 50%, #654321 100%);
+            border: 3px solid #654321;
+            border-top: 1px solid #D2691E;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(255,255,255,0.1);
+        }
+        .podium-base.first { 
+            height: 80px; order: 2;
+        }
+        .podium-base.second { 
+            height: 60px; order: 1;
+        }
+        .podium-base.third { 
+            height: 40px; order: 3;
+        }
+        .podium-medal-block {
+            font-size: 24px;
+        }
+        .podium-container.first { order: 2; }
+        .podium-container.second { order: 1; }
+        .podium-container.third { order: 3; }
+        .podium-medal { font-size: 32px; margin-bottom: 10px; }
+        .podium-name { font-weight: bold; color: #8e44ad; margin-bottom: 5px; font-size: 14px; }
+        .podium-score { color: #666; font-size: 12px; }
+        .timer { 
+            font-size: 20px; 
+            color: #8e44ad;
+            margin: 0 15px; font-weight: bold;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 120px;
+            text-align: center;
+        }
+        .score-popup { 
+            position: absolute; font-size: 28px; font-weight: bold; 
+            color: #8e44ad;
+            z-index: 1000; pointer-events: none; 
+            animation: scoreFloat 2s ease-out forwards;
+        }
+        @keyframes scoreFloat { 
+            0% { opacity: 1; transform: translateY(0px) scale(1); } 
+            50% { transform: translateY(-40px) scale(1.3); } 
+            100% { opacity: 0; transform: translateY(-80px) scale(1); } 
+        }
+        button {
+            background: linear-gradient(145deg, #8e44ad, #9b59b6);
+            color: white; border: none; padding: 15px 30px;
+            border-radius: 25px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        #loginSection, #gameSection, #leaderboardSection { display: none; }
+        #loginSection.active, #gameSection.active, #leaderboardSection.active { display: block; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="usernameDisplay" style="position: absolute; top: 20px; right: 30px; padding: 8px 16px; font-size: 13px; background: linear-gradient(145deg, #f8f9ff, #e8f0ff); color: #6b2c91; border: 1px solid rgba(142, 68, 173, 0.2); border-radius: 20px; display: none; z-index: 10; font-weight: 600; box-shadow: 0 2px 8px rgba(142, 68, 173, 0.1);">👤 <span id="currentUsernameText"></span></div>
+        <h1><span style="background: none; -webkit-background-clip: initial; -webkit-text-fill-color: initial; background-clip: initial;">⭐</span> Trivia Challenge</h1>
+        
+        <div id="loginSection" class="active">
+            <div style="padding: 10px 40px 20px 40px; max-width: 500px; margin: 0 auto;">
+                <div id="signInTagline" style="margin-bottom: 0px;">
+                    <p style="font-size: 22px; color: #555; margin: 0; line-height: 1.5; font-weight: 300; letter-spacing: 0.5px;">Can you beat the top players?<br>Jump in and find out!</p>
+                </div>
+                <div id="authForms">
+                    <div id="signInForm" style="margin-bottom: 30px;">
+                        <input type="email" id="signInEmail" placeholder="Email" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="password" id="signInPassword" placeholder="Password" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <div id="signInError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
+                        <div style="margin-bottom: 30px; margin-top: 20px;">
+                            <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
+                                <button onclick="signIn()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 15px 30px; border-radius: 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none;">Sign In</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 0px;">
+                            <p style="color: #666; font-size: 16px; margin: 0 0 15px 0;">
+                                <span onclick="showForgotPassword()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Forgot Password?</span>
+                            </p>
+                            <div style="height: 1px; background: #e0e0e0; margin: 15px 0; width: 100px; margin-left: auto; margin-right: auto;"></div>
+                            <p style="color: #666; font-size: 16px; margin: 0;">Don't have an account? <span onclick="showSignUp()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-size: 16px; font-weight: 600;">Sign Up</span></p>
+                        </div>
+                    </div>
+                    <div id="signUpForm" style="display: none; margin-bottom: 30px;">
+                        <input type="text" id="signUpUsername" placeholder="Username (2-20 chars)" maxlength="20" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 5px; margin-top: 30px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'" oninput="toggleCheckAvailabilityLink()">
+                        <div style="margin-bottom: 25px; max-width: 300px; margin-left: auto; margin-right: auto;">
+                            <div style="text-align: right;">
+                                <span id="checkAvailabilityLink" onclick="checkUsernameAvailability()" style="color: #ccc; text-decoration: none; cursor: not-allowed; font-size: 14px; font-weight: 600;">Check availability</span>
+                            </div>
+                            <div id="usernameCheckResult" style="display: none; font-size: 14px; margin-top: 5px; text-align: left;"></div>
+                            <div style="height: 1px; background: #e0e0e0; margin: 15px 0; width: 80px; margin-left: auto; margin-right: auto;"></div>
+                        </div>
+                        <input type="email" id="signUpEmail" placeholder="Email" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="password" id="signUpPassword" placeholder="Password (min 8 chars)" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="password" id="signUpConfirmPassword" placeholder="Confirm Password" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <div id="signUpError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
+                        <div style="margin-bottom: 40px; margin-top: 20px;">
+                            <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
+                                <button onclick="signUp()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 15px 30px; border-radius: 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none;">Sign Up</button>
+                            </div>
+                        </div>
+
+                        <p style="color: #666; font-size: 16px; margin: 0;">Already have an account? <span onclick="showSignIn()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-size: 16px; font-weight: 600;">Sign In</span></p>
+                    </div>
+                    <div id="forgotPasswordForm" style="display: none; margin-bottom: 30px;">
+                        <h3 style="color: #8e44ad; margin-bottom: 20px; font-size: 20px; font-weight: 600; margin-top: 20px;">🔑 Reset Password</h3>
+                        <input type="email" id="forgotUsername" placeholder="Email" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <div id="forgotPasswordError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
+                        <div style="margin-bottom: 30px; margin-top: 20px;">
+                            <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
+                                <button onclick="forgotPassword()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 15px 30px; border-radius: 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none;">Send Reset Code</button>
+                            </div>
+                        </div>
+                        <p style="color: #666; font-size: 16px; margin: 0;">Remember your password? <span onclick="showSignIn()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Sign In</span></p>
+                    </div>
+                    <div id="resetPasswordForm" style="display: none; margin-bottom: 30px;">
+                        <h3 style="color: #8e44ad; margin-bottom: 20px; font-size: 20px; font-weight: 600; margin-top: 20px;">🔑 New Password</h3>
+                        <input type="text" id="resetCode" placeholder="Reset Code" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="password" id="newPassword" placeholder="New Password (min 8 chars)" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="password" id="confirmNewPassword" placeholder="Confirm New Password" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <div id="resetPasswordError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
+                        <div style="margin-bottom: 30px; margin-top: 20px;">
+                            <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
+                                <button onclick="resetPassword()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 15px 30px; border-radius: 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none;">Reset Password</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0px;">
+                            <p style="color: #666; font-size: 16px; margin: 0 0 15px 0;">Didn't receive the code? <span onclick="showForgotPassword()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Resend Code</span>
+                            </p>
+                            <div style="height: 1px; background: #e0e0e0; margin: 15px 0; width: 100px; margin-left: auto; margin-right: auto;"></div>
+                            <p style="color: #666; font-size: 16px; margin: 0;">Remember your password? <span onclick="showSignIn()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Sign In</span></p>
+                        </div>
+                    </div>
+
+                </div>
+                <div style="font-size: 32px; opacity: 0.4; letter-spacing: 8px;">
+                    🤔 💡 🎆 🏆 ✨
+                </div>
+            </div>
+        </div>
+
+        <div id="gameSection">
+            <div class="score">🎆 Score: <span id="currentScore">0</span> points</div>
+            <div class="timer">⏱️ Time: <span id="timer" style="color: #ff4444;">10</span><span style="color: #ff4444;">s</span></div>
+            
+            <div class="question-card">
+                <h3 id="questionNumber">Question 1 of 5</h3>
+                <p id="questionText"></p>
+                <div id="options" class="options"></div>
+            </div>
+            
+            <button id="nextButton" onclick="nextQuestion()" style="display: none;">Next Question</button>
+            <div id="endGameButton" style="display: none; margin: 20px auto;">
+                <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3);">
+                    <button onclick="endGame()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 18px 40px; border-radius: 32px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none; letter-spacing: 0.5px;">🏆 View Leaderboard</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="leaderboardSection">
+            <h2>🏆 Weekly Leaderboard</h2>
+            <div id="userScore" style="display: none; margin-bottom: 20px; padding: 15px 20px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: white; border-radius: 15px; text-align: center; font-weight: bold; box-shadow: 0 5px 15px rgba(142, 68, 173, 0.3);">
+                <div style="font-size: 18px; margin-bottom: 5px;">👤 Your Score</div>
+                <div style="font-size: 24px;">⭐ <span id="userScoreValue">0</span> pts</div>
+                <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">Rank: <span id="userRank">#-</span></div>
+            </div>
+            <div id="leaderboard" class="leaderboard"></div>
+            <button onclick="startNewGame()" style="margin: 30px 0 10px 0; padding: 18px 40px; font-size: 18px;">⚡ Challenge Yourself</button>
+        </div>
+    </div>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1563.0.min.js"></script>
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <script>
+        let currentSession = null;
+        let currentQuestion = null;
+        let startTime = null;
+        let timerInterval = null;
+        let timeLeft = 10;
+        
+        const API_BASE = '${API_BASE}';
+        const USER_POOL_ID = '${USER_POOL_ID}';
+        const CLIENT_ID = '${CLIENT_ID}';
+
+        
+        // Debug: Log the current origin and API base
+        console.log('Current origin:', window.location.origin);
+        console.log('API Base:', API_BASE);
+        let authToken = null;
+        let cognitoUser = null;
+        
+        // Initialize Cognito
+        const poolData = {
+            UserPoolId: USER_POOL_ID,
+            ClientId: CLIENT_ID
+        };
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+        
+        // Mock game variables
+        let mockQuestions = [
+            { id: 'mock-1', question: 'What is the capital of France?', options: ['London', 'Berlin', 'Paris', 'Madrid'], correct_answer: 'Paris' },
+            { id: 'mock-2', question: 'Which planet is closest to the Sun?', options: ['Venus', 'Mercury', 'Earth', 'Mars'], correct_answer: 'Mercury' },
+            { id: 'mock-3', question: 'What is 2 + 2?', options: ['3', '4', '5', '6'], correct_answer: '4' },
+            { id: 'mock-4', question: 'Who painted the Mona Lisa?', options: ['Van Gogh', 'Picasso', 'Da Vinci', 'Monet'], correct_answer: 'Da Vinci' },
+            { id: 'mock-5', question: 'What is the largest ocean?', options: ['Atlantic', 'Indian', 'Arctic', 'Pacific'], correct_answer: 'Pacific' }
+        ];
+        let mockQuestionIndex = 0;
+        let mockScore = 0;
+        let currentUsername = 'You'; // In real app, this would come from authentication
+
+        function showSignUp() {
+            clearAllForms();
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'block';
+            document.getElementById('forgotPasswordForm').style.display = 'none';
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('signInTagline').style.display = 'block';
+        }
+        
+        function showForgotPassword() {
+            clearAllForms();
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('forgotPasswordForm').style.display = 'block';
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('signInTagline').style.display = 'none';
+        }
+        
+        function forgotPassword() {
+            const email = document.getElementById('forgotUsername').value.trim();
+            
+            if (!email) {
+                showError('forgotPasswordError', 'Please enter your email.');
+                return;
+            }
+            
+            const userData = {
+                Username: email,
+                Pool: userPool
+            };
+            
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.forgotPassword({
+                onSuccess: () => {
+                    clearError('forgotPasswordError');
+                    document.getElementById('forgotPasswordForm').style.display = 'none';
+                    document.getElementById('resetPasswordForm').style.display = 'block';
+                },
+                onFailure: (err) => {
+                    if (err.message.includes('no registered/verified email') || err.message.includes('not verified')) {
+                        // User exists but email not verified - send verification email
+                        cognitoUser.resendConfirmationCode((resendErr, result) => {
+                            if (!resendErr) {
+                                showError('forgotPasswordError', 'Please verify your email first. Verification link sent to your inbox.', '#ff9900');
+                            } else {
+                                showError('forgotPasswordError', 'Please verify your email first. Check your inbox for the verification link.', '#ff9900');
+                            }
+                        });
+                        return;
+                    }
+                    
+                    let errorMessage = err.message;
+                    if (err.message.includes('Username/client id combination not found')) {
+                        errorMessage = 'No account found with this email address.';
+                    } else if (!err.message.endsWith('.')) {
+                        errorMessage = err.message + '.';
+                    }
+                    showError('forgotPasswordError', errorMessage);
+                }
+            });
+        }
+        
+        function resetPassword() {
+            const code = document.getElementById('resetCode').value.trim();
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmNewPassword').value;
+            const email = document.getElementById('forgotUsername').value.trim();
+            
+            if (!code || !newPassword || !confirmPassword) {
+                showError('resetPasswordError', 'Please fill in all fields.');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showError('resetPasswordError', 'Passwords do not match.');
+                return;
+            }
+            
+            const userData = {
+                Username: email,
+                Pool: userPool
+            };
+            
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.confirmPassword(code, newPassword, {
+                onSuccess: () => {
+                    clearError('resetPasswordError');
+                    showError('signInError', '✅ Password reset successful! Please sign in.', '#4CAF50');
+                    showSignIn();
+                },
+                onFailure: (err) => {
+                    let errorMessage = err.message;
+                    if (err.message.includes('Password not long enough')) {
+                        errorMessage = 'Password must be at least 8 characters long.';
+                    } else if (err.message.includes('Member must satisfy regular expression pattern')) {
+                        errorMessage = 'Password cannot start or end with spaces.';
+                    } else if (!err.message.endsWith('.')) {
+                        errorMessage = err.message + '.';
+                    }
+                    showError('resetPasswordError', errorMessage);
+                }
+            });
+        }
+        
+        function clearAllForms() {
+            // Clear all input fields that exist
+            const fields = ['signInEmail', 'signInPassword', 'signUpUsername', 'signUpEmail', 'signUpPassword', 'signUpConfirmPassword', 'forgotUsername', 'resetCode', 'newPassword', 'confirmNewPassword'];
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.value = '';
+            });
+            
+            // Clear all error messages
+            clearError('signInError');
+            clearError('signUpError');
+            clearError('forgotPasswordError');
+            clearError('resetPasswordError');
+            
+            // Reset username availability check
+            const link = document.getElementById('checkAvailabilityLink');
+            const resultDiv = document.getElementById('usernameCheckResult');
+            if (link) {
+                link.style.color = '#ccc';
+                link.style.cursor = 'not-allowed';
+            }
+            if (resultDiv) {
+                resultDiv.style.display = 'none';
+            }
+        }
+        
+        function toggleCheckAvailabilityLink() {
+            const username = document.getElementById('signUpUsername').value.trim();
+            const link = document.getElementById('checkAvailabilityLink');
+            const resultDiv = document.getElementById('usernameCheckResult');
+            
+            if (username.length >= 2) {
+                link.style.color = '#8e44ad';
+                link.style.cursor = 'pointer';
+            } else {
+                link.style.color = '#ccc';
+                link.style.cursor = 'not-allowed';
+                resultDiv.style.display = 'none';
+            }
+        }
+        
+        async function checkUsernameAvailability() {
+            const username = document.getElementById('signUpUsername').value.trim();
+            const resultDiv = document.getElementById('usernameCheckResult');
+            
+            if (!username || username.length < 2) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/check-username`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username }),
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+                
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+                
+                const data = await response.json();
+                
+                if (data.available) {
+                    resultDiv.textContent = 'Username is available';
+                    resultDiv.style.color = '#4CAF50';
+                } else {
+                    resultDiv.textContent = 'Username is taken';
+                    resultDiv.style.color = '#ff4444';
+                }
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                // Fallback to optimistic validation
+                resultDiv.textContent = 'Username is available (offline check)';
+                resultDiv.style.color = '#4CAF50';
+                resultDiv.style.display = 'block';
+            }
+        }
+        
+        function showSignIn() {
+            clearAllForms();
+            document.getElementById('signInForm').style.display = 'block';
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('forgotPasswordForm').style.display = 'none';
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('signInTagline').style.display = 'block';
+        }
+        
+        async function signUp() {
+            const displayName = document.getElementById('signUpUsername').value.trim();
+            const email = document.getElementById('signUpEmail').value.trim();
+            const password = document.getElementById('signUpPassword').value;
+            const confirmPassword = document.getElementById('signUpConfirmPassword').value;
+            
+            if (!displayName || !email || !password || !confirmPassword) {
+                showError('signUpError', 'Please fill in all fields.');
+                return;
+            }
+            
+            if (displayName.length < 2 || displayName.length > 20) {
+                showError('signUpError', 'Username must be 2-20 characters long.');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('signUpError', 'Passwords do not match.');
+                return;
+            }
+            
+            // Check username uniqueness via API
+            try {
+                const checkResponse = await fetch(`${API_BASE}/check-username`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: displayName })
+                });
+                
+                if (!checkResponse.ok) {
+                    throw new Error('Unable to verify username availability.');
+                }
+                
+                const checkData = await checkResponse.json();
+                if (!checkData.available) {
+                    showError('signUpError', 'Username is already taken. Please choose another.');
+                    return;
+                }
+            } catch (error) {
+                console.error('Username check failed:', error);
+                // Continue with sign-up if check fails (fallback)
+            }
+            
+            const attributeList = [
+                new AmazonCognitoIdentity.CognitoUserAttribute({
+                    Name: 'preferred_username',
+                    Value: displayName
+                })
+            ];
+            
+            userPool.signUp(email, password, attributeList, null, (err, result) => {
+                if (err) {
+                    let errorMessage = err.message;
+                    if (err.message.includes('Password did not conform with policy: Password not long enough')) {
+                        errorMessage = 'Password must be at least 8 characters long.';
+                    } else if (err.message.includes('An account with the given email already exists')) {
+                        errorMessage = 'An account with this email already exists.';
+                    } else if (err.message.includes('Invalid email address format')) {
+                        errorMessage = 'Please enter a valid email address.';
+                    } else {
+                        errorMessage = 'Sign up failed: ' + err.message;
+                        if (!err.message.endsWith('.')) {
+                            errorMessage += '.';
+                        }
+                    }
+                    showError('signUpError', errorMessage);
+                    return;
+                }
+                clearError('signUpError');
+                showError('signUpError', 'Account created! Check your email to verify and then sign in.', '#4CAF50');
+            });
+        }
+        
+        async function confirmSignUp() {
+            const code = document.getElementById('confirmCode').value.trim();
+            
+            if (!code) {
+                showError('confirmError', 'Please enter verification code.');
+                return;
+            }
+            
+            cognitoUser.confirmRegistration(code, true, (err, result) => {
+                if (err) {
+                    let errorMessage = 'Verification failed: ' + err.message;
+                    if (!err.message.endsWith('.')) {
+                        errorMessage += '.';
+                    }
+                    showError('confirmError', errorMessage);
+                    return;
+                }
+                clearError('confirmError');
+                showError('signInError', '✅ Account verified! Please sign in.', '#4CAF50');
+                showSignIn();
+            });
+        }
+        
+        function resendVerification() {
+            if (!cognitoUser) {
+                showError('confirmError', 'Unable to resend verification. Please try signing up again.');
+                return;
+            }
+            
+            cognitoUser.resendConfirmationCode((err, result) => {
+                if (err) {
+                    showError('confirmError', 'Failed to resend verification: ' + err.message);
+                    return;
+                }
+                clearError('confirmError');
+                showError('confirmError', 'Verification email sent! Check your inbox.', '#4CAF50');
+            });
+        }
+        
+        async function signIn() {
+            const email = document.getElementById('signInEmail').value.trim();
+            const password = document.getElementById('signInPassword').value;
+            
+            if (!email || !password) {
+                showError('signInError', 'Please enter email and password.');
+                return;
+            }
+            
+            const authenticationData = {
+                Username: email,
+                Password: password
+            };
+            
+            const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+            
+            const userData = {
+                Username: email,
+                Pool: userPool
+            };
+            
+            cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.authenticateUser(authenticationDetails, {
+                onSuccess: (result) => {
+                    authToken = result.getIdToken().getJwtToken();
+                    currentUsername = result.getIdToken().payload.preferred_username || email.split('@')[0];
+                    
+                    document.getElementById('usernameDisplay').style.display = 'block';
+                    document.getElementById('currentUsernameText').textContent = currentUsername;
+                    showSection('leaderboardSection');
+                    loadLeaderboard();
+                },
+                onFailure: (err) => {
+                    console.log('Sign in error:', err.message, 'Code:', err.code);
+                    if (err.message.includes('User is not confirmed') || err.message.includes('not confirmed') || err.code === 'UserNotConfirmedException') {
+                        // User exists but not verified - send verification email and show message
+                        const tempCognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+                        tempCognitoUser.resendConfirmationCode((resendErr, result) => {
+                            if (!resendErr) {
+                                showError('signInError', 'Account not verified. Verification email sent. Please verify and sign in again.', '#ff9900');
+                            } else {
+                                showError('signInError', 'Account not verified. Check your email for the verification link.', '#ff9900');
+                            }
+                        });
+                        return;
+                    }
+                    
+                    let errorMessage = err.message;
+                    if (err.message.includes('Incorrect username or password') || err.message.includes('NotAuthorizedException')) {
+                        errorMessage = 'Incorrect email or password. Please try again.';
+                    } else if (!err.message.endsWith('.')) {
+                        errorMessage = err.message + '.';
+                    }
+                    showError('signInError', errorMessage);
+                }
+            });
+        }
+        
+        // Check if user is already signed in
+        window.onload = function() {
+            const currentUser = userPool.getCurrentUser();
+            if (currentUser) {
+                currentUser.getSession((err, session) => {
+                    if (err || !session.isValid()) {
+                        showSection('loginSection');
+                        return;
+                    }
+                    authToken = session.getIdToken().getJwtToken();
+                    currentUsername = session.getIdToken().payload.preferred_username || session.getIdToken().payload.email;
+                    
+                    document.getElementById('usernameDisplay').style.display = 'block';
+                    document.getElementById('currentUsernameText').textContent = currentUsername;
+                    showSection('leaderboardSection');
+                    loadLeaderboard();
+                });
+            }
+        };
+        
+        function showError(errorId, message, color = '#ff4444') {
+            const errorDiv = document.getElementById(errorId);
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.color = color;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        function clearError(errorId) {
+            const errorDiv = document.getElementById(errorId);
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+        }
+        
+
+        
+
+        
+
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.container > div').forEach(div => {
+                div.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        async function startNewGame() {
+            try {
+                showSection('gameSection');
+                document.getElementById('currentScore').textContent = '0';
+                mockScore = 0;
+                
+                console.log('Making request to:', `${API_BASE}/start-game`);
+                const response = await fetch(`${API_BASE}/start-game?t=${Date.now()}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ username: currentUsername })
+                });
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentSession = data.sessionId;
+                displayQuestion(data.question, data.questionNumber, data.totalQuestions);
+                
+            } catch (error) {
+                console.error('Error starting real game:', error);
+                console.error('Response details:', error.message);
+                // Show more detailed error for debugging
+                alert(`Unable to start game: ${error.message}. Please check console for details.`);
+                showSection('leaderboardSection');
+            }
+        }
+        
+        // Weekly question cache management for real implementation
+        async function ensureWeeklyQuestionsLoaded() {
+            try {
+                // Check if current week's questions are loaded in cache
+                const response = await fetch(`${API_BASE}/check-weekly-questions`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                // If questions are stale or missing, trigger refresh
+                if (!data.questionsLoaded || data.weekExpired) {
+                    await refreshWeeklyQuestions();
+                }
+            } catch (error) {
+                console.error('Error checking weekly questions:', error);
+            }
+        }
+        
+        async function refreshWeeklyQuestions() {
+            try {
+                // Backend will:
+                // 1. Clear old week's questions from Valkey
+                // 2. Fetch 3000 random questions from main database
+                // 3. Store in Valkey with current week key
+                // 4. Set expiration for next Monday 12:00 AM UTC
+                
+                await fetch(`${API_BASE}/refresh-weekly-questions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        questionCount: 3000,
+                        weekKey: getWeekKey()
+                    })
+                });
+                
+                console.log('Weekly questions refreshed successfully');
+            } catch (error) {
+                console.error('Error refreshing weekly questions:', error);
+            }
+        }
+        
+        function getWeekKey() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const week = getWeekNumber(now);
+            return `${year}-W${week.toString().padStart(2, '0')}`;
+        }
+        
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        function startMockGame() {
+            mockQuestionIndex = 0;
+            mockScore = 0;
+            displayQuestion(mockQuestions[0], 1, 5);
+        }
+
+        function displayQuestion(question, questionNumber, totalQuestions) {
+            currentQuestion = question;
+            startTime = Date.now();
+            timeLeft = 10;
+            
+            document.getElementById('questionNumber').textContent = `Question ${questionNumber} of ${totalQuestions}`;
+            document.getElementById('questionText').innerHTML = question.question;
+            
+            const optionsDiv = document.getElementById('options');
+            optionsDiv.innerHTML = '';
+            
+            question.options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'option';
+                button.textContent = option;
+                button.onclick = () => selectAnswer(option);
+                optionsDiv.appendChild(button);
+            });
+            
+            document.getElementById('nextButton').style.display = 'none';
+            document.getElementById('endGameButton').style.display = 'none';
+            
+            startTimer();
+        }
+
+        function startTimer() {
+            document.getElementById('timer').textContent = timeLeft;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    selectAnswer(null);
+                }
+            }, 1000);
+        }
+
+        async function selectAnswer(selectedAnswer) {
+            clearInterval(timerInterval);
+            const timeTaken = (Date.now() - startTime) / 1000;
+            
+            document.querySelectorAll('.option').forEach(btn => {
+                btn.disabled = true;
+                if (btn.textContent === currentQuestion.correct_answer) {
+                    btn.classList.add('correct');
+                } else if (btn.textContent === selectedAnswer && selectedAnswer !== currentQuestion.correct_answer) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            try {
+                // Submit answer to real API
+                const response = await fetch(`${API_BASE}/submit-answer?t=${Date.now()}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        username: currentUsername,
+                        sessionId: currentSession,
+                        questionId: currentQuestion.id,
+                        answer: selectedAnswer,
+                        timeTaken: Math.round(timeTaken)
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.score > 0) {
+                    showScoreAnimation(data.score);
+                }
+                document.getElementById('currentScore').textContent = data.totalScore;
+                
+                // Auto-advance after 2 seconds
+                setTimeout(() => {
+                    if (data.nextQuestion) {
+                        displayQuestion(data.nextQuestion, data.questionNumber, data.totalQuestions);
+                    } else if (data.gameComplete) {
+                        document.getElementById('endGameButton').style.display = 'block';
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+                // Fallback: just show next question button
+                setTimeout(() => {
+                    document.getElementById('endGameButton').style.display = 'block';
+                }, 2000);
+            }
+        }
+
+        function nextQuestion() {
+            document.getElementById('nextButton').style.display = 'none';
+            if (mockQuestionIndex < mockQuestions.length) {
+                displayQuestion(mockQuestions[mockQuestionIndex], mockQuestionIndex + 1, 5);
+            }
+        }
+
+        async function endGame() {
+            try {
+                // Get current score from display
+                const currentScore = parseInt(document.getElementById('currentScore').textContent) || 0;
+                
+                // End the session and submit final score
+                const response = await fetch(`${API_BASE}/end-session?t=${Date.now()}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ 
+                        username: currentUsername,
+                        sessionId: currentSession,
+                        finalScore: currentScore,
+                        completed: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to end session:', response.status);
+                }
+            } catch (error) {
+                console.error('Error ending session:', error);
+            }
+            
+            loadLeaderboard();
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_BASE}/leaderboard?username=${encodeURIComponent(currentUsername)}&t=${Date.now()}`, {
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayLeaderboard(data.leaderboard || [], data.userScore);
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                // Fallback to empty leaderboard
+                displayLeaderboard([]);
+            }
+        }
+
+        function showScoreAnimation(points) {
+            const scoreElement = document.getElementById('currentScore');
+            const rect = scoreElement.getBoundingClientRect();
+            
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = `+${points}`;
+            popup.style.left = (rect.left + rect.width/2) + 'px';
+            popup.style.top = rect.top + 'px';
+            
+            document.body.appendChild(popup);
+            
+            setTimeout(() => {
+                document.body.removeChild(popup);
+            }, 2000);
+        }
+
+        function displayLeaderboard(leaderboard, userScore) {
+            showSection('leaderboardSection');
+            const leaderboardDiv = document.getElementById('leaderboard');
+            const userScoreDiv = document.getElementById('userScore');
+            
+            // Show user score section if user has played
+            if (userScore) {
+                document.getElementById('userScoreValue').textContent = userScore.score;
+                document.getElementById('userRank').textContent = `#${userScore.rank}`;
+                userScoreDiv.style.display = 'block';
+            } else {
+                userScoreDiv.style.display = 'none';
+            }
+            
+            if (leaderboard.length === 0) {
+                leaderboardDiv.innerHTML = '<p>No scores yet this week!</p>';
+                return;
+            }
+            
+            // Show top 10 only
+            const top10 = leaderboard.slice(0, 10);
+            
+            let html = '<ol style="list-style: none; padding-left: 0;">';
+            top10.forEach((player, index) => {
+                let prefix = '';
+                let prefixStyle = '';
+                let style = '';
+                if (index === 0) {
+                    prefix = '🥇';
+                    prefixStyle = 'font-size: 28px; margin-right: 8px;';
+                    style = 'color: #FFD700; font-weight: bold;';
+                } else if (index === 1) {
+                    prefix = '🥈';
+                    prefixStyle = 'font-size: 28px; margin-right: 8px;';
+                    style = 'color: #C0C0C0; font-weight: bold;';
+                } else if (index === 2) {
+                    prefix = '🥉';
+                    prefixStyle = 'font-size: 28px; margin-right: 8px;';
+                    style = 'color: #CD7F32; font-weight: bold;';
+                } else {
+                    prefix = `${index + 1}.`;
+                    prefixStyle = 'font-size: 16px; margin-right: 8px; margin-left: 6px;';
+                }
+                
+                const isYou = player.username === currentUsername;
+                const displayName = isYou ? 'You' : player.username;
+                const nameStyle = isYou ? 'background: linear-gradient(45deg, #8e44ad, #9b59b6); color: white; padding: 4px 12px; border-radius: 15px; font-weight: bold;' : '';
+                
+                const borderStyle = index === top10.length - 1 ? '' : 'border-bottom: 1px solid rgba(142, 68, 173, 0.1);';
+                
+                html += `<li style="${style} padding: 8px 0; ${borderStyle} font-weight: 500; min-height: 40px; display: flex; align-items: center;">
+                    <span style="${prefixStyle}">${prefix}</span> <span style="${nameStyle}">${displayName}</span> 
+                    <span style="margin-left: auto; background: #f0f8ff; color: #8e44ad; padding: 4px 12px; border-radius: 12px; font-weight: bold;">
+                        ⭐ ${player.score} pts
+                    </span>
+                </li>`;
+            });
+            html += '</ol>';
+            
+            leaderboardDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

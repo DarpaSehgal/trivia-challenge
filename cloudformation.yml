@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Trivia Challenge App Infrastructure'
+
+Parameters:
+  ValkeySubnetIds:
+    Type: CommaDelimitedList
+    Description: Subnet IDs for Valkey cluster
+  ValkeySecurityGroupId:
+    Type: String
+    Description: Security Group ID for Valkey cluster
+
+Resources:
+  # ElastiCache Valkey Serverless
+  ValkeyServerlessCache:
+    Type: AWS::ElastiCache::ServerlessCache
+    Properties:
+      ServerlessCacheName: trivia-valkey-cache
+      Engine: valkey
+      MajorEngineVersion: '8'
+      SubnetIds: !Ref ValkeySubnetIds
+      SecurityGroupIds:
+        - !Ref ValkeySecurityGroupId
+      Description: 'Valkey cache for trivia challenge app'
+      CacheUsageLimits:
+        DataStorage:
+          Maximum: 1
+          Unit: GB
+        ECPUPerSecond:
+          Maximum: 1000
+      DailySnapshotTime: '03:00'
+      SnapshotRetentionLimit: 1
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: ValkeyAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticache:*
+                Resource: '*'
+
+  # Lambda Functions
+  TriviaGameFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: trivia-game
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return { statusCode: 200, body: JSON.stringify({ message: 'Deploy code separately' }) };
+          };
+      Environment:
+        Variables:
+          VALKEY_HOST: trivia-valkey-cache-aqqfjm.serverless.usw2.cache.amazonaws.com
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref ValkeySecurityGroupId
+        SubnetIds: !Ref ValkeySubnetIds
+      Timeout: 30
+
+  QuestionPreloaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: question-preloader
+      Runtime: nodejs18.x
+      Handler: preloader.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return { statusCode: 200, body: JSON.stringify({ message: 'Deploy code separately' }) };
+          };
+      Environment:
+        Variables:
+          VALKEY_HOST: trivia-valkey-cache-aqqfjm.serverless.usw2.cache.amazonaws.com
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref ValkeySecurityGroupId
+        SubnetIds: !Ref ValkeySubnetIds
+      Timeout: 60
+
+  # API Gateway
+  TriviaApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: trivia-challenge-api
+      Description: API for trivia challenge application
+
+Outputs:
+  ValkeyServerlessCacheName:
+    Description: Valkey Serverless Cache Name
+    Value: !Ref ValkeyServerlessCache
+    Export:
+      Name: !Sub '${AWS::StackName}-ValkeyServerlessCacheName'
+
+  ApiGatewayId:
+    Description: API Gateway ID
+    Value: !Ref TriviaApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
