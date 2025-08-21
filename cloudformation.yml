@@ -8,27 +8,12 @@ Parameters:
   ValkeySecurityGroupId:
     Type: String
     Description: Security Group ID for Valkey cluster
+  ValkeyEndpoint:
+    Type: String
+    Description: Existing Valkey cache endpoint
 
 Resources:
-  # ElastiCache Valkey Serverless
-  ValkeyServerlessCache:
-    Type: AWS::ElastiCache::ServerlessCache
-    Properties:
-      ServerlessCacheName: trivia-valkey-cache
-      Engine: valkey
-      MajorEngineVersion: '8'
-      SubnetIds: !Ref ValkeySubnetIds
-      SecurityGroupIds:
-        - !Ref ValkeySecurityGroupId
-      Description: 'Valkey cache for trivia challenge app'
-      CacheUsageLimits:
-        DataStorage:
-          Maximum: 1
-          Unit: GB
-        ECPUPerSecond:
-          Maximum: 1000
-      DailySnapshotTime: '03:00'
-      SnapshotRetentionLimit: 1
+
 
   # Lambda Execution Role
   LambdaExecutionRole:
@@ -68,7 +53,7 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: !GetAtt ValkeyServerlessCache.Endpoint.Address
+          VALKEY_HOST: !Ref ValkeyEndpoint
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
@@ -89,7 +74,7 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: !GetAtt ValkeyServerlessCache.Endpoint.Address
+          VALKEY_HOST: !Ref ValkeyEndpoint
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
@@ -227,15 +212,9 @@ Resources:
         PriceClass: PriceClass_100
 
 Outputs:
-  ValkeyServerlessCacheName:
-    Description: Valkey Serverless Cache Name
-    Value: !Ref ValkeyServerlessCache
-    Export:
-      Name: !Sub '${AWS::StackName}-ValkeyServerlessCacheName'
-
   ValkeyEndpoint:
-    Description: Valkey Serverless Cache Endpoint
-    Value: !GetAtt ValkeyServerlessCache.Endpoint.Address
+    Description: Valkey Cache Endpoint
+    Value: !Ref ValkeyEndpoint
     Export:
       Name: !Sub '${AWS::StackName}-ValkeyEndpoint'
 

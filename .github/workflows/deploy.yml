@@ -30,6 +30,14 @@ jobs:
     - name: Make deploy script executable
       run: chmod +x deploy-simple.sh
       
+    - name: Clean up failed stack
+      run: |
+        if aws cloudformation describe-stacks --stack-name trivia-challenge 2>/dev/null | grep -q ROLLBACK_COMPLETE; then
+          echo "Deleting failed stack..."
+          aws cloudformation delete-stack --stack-name trivia-challenge
+          aws cloudformation wait stack-delete-complete --stack-name trivia-challenge
+        fi
+        
     - name: Deploy Infrastructure
       run: |
         aws cloudformation deploy \
@@ -38,6 +46,7 @@ jobs:
           --parameter-overrides \
             ValkeySubnetIds=${{ secrets.VALKEY_SUBNET_IDS }} \
             ValkeySecurityGroupId=${{ secrets.VALKEY_SECURITY_GROUP_ID }} \
+            ValkeyEndpoint=${{ secrets.VALKEY_HOST }} \
           --capabilities CAPABILITY_IAM || {
           echo "CloudFormation deployment failed. Getting stack events..."
           aws cloudformation describe-stack-events --stack-name trivia-challenge --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' --output table
