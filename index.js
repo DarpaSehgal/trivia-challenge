@@ -1,21 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
-
-const client = jwksClient({
-    jwksUri: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`
-});
-
-function getKey(header, callback) {
-    client.getSigningKey(header.kid, (err, key) => {
-        if (err) {
-            callback(err);
-            return;
-        }
-        const signingKey = key.publicKey || key.rsaPublicKey;
-        callback(null, signingKey);
-    });
-}
+const { requireAuth, extractUserId } = require('./auth-middleware');
 const valkeyClient = require('./valkey-client');
 const questionService = require('./question-service');
 const { addSecurityHeaders } = require('./security-headers');
@@ -23,26 +7,7 @@ const { healthCheck } = require('./health-check');
 const config = require('./config');
 const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString } = require('./input-validator');
 
-// Rate limiting with configuration
-const rateLimiter = new Map();
-const RATE_LIMIT = config.rateLimit;
-const RATE_WINDOW = config.rateLimitWindow;
-
-function checkRateLimit(userId) {
-    const now = Date.now();
-    const userRequests = rateLimiter.get(userId) || [];
-    
-    // Remove old requests outside the window
-    const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
-    
-    if (recentRequests.length >= RATE_LIMIT) {
-        return false;
-    }
-    
-    recentRequests.push(now);
-    rateLimiter.set(userId, recentRequests);
-    return true;
-}
+const rateLimiter = require('./rate-limiter');
 
 exports.handler = async (event) => {
     const baseHeaders = {
@@ -75,12 +40,28 @@ exports.handler = async (event) => {
         const userId = extractUserId(event);
         
         // Rate limiting
-        if (!checkRateLimit(userId)) {
+        if (!rateLimiter.checkRateLimit(userId)) {
             return {
                 statusCode: 429,
                 headers,
                 body: JSON.stringify({ error: 'Rate limit exceeded' })
             };
+        }
+
+        // Protected endpoints require authentication
+        const protectedEndpoints = ['/start-game', '/submit-answer', '/end-session'];
+        const isProtected = protectedEndpoints.some(endpoint => path.includes(endpoint));
+        
+        if (isProtected) {
+            try {
+                await requireAuth(event);
+            } catch (authError) {
+                return {
+                    statusCode: 401,
+                    headers,
+                    body: JSON.stringify({ error: 'Unauthorized' })
+                };
+            }
         }
 
         switch (`${method} ${path}`) {
@@ -122,30 +103,7 @@ exports.handler = async (event) => {
     }
 };
 
-function extractUserId(event) {
-    try {
-        const token = event.headers.Authorization?.replace('Bearer ', '') || event.headers.authorization?.replace('Bearer ', '');
-        if (!token) return 'anonymous';
-        
-        // For production, verify the JWT
-        try {
-            const decoded = jwt.verify(token, getKey, {
-                audience: process.env.COGNITO_CLIENT_ID,
-                issuer: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-                algorithms: ['RS256']
-            });
-            return decoded.sub || decoded['cognito:username'] || 'anonymous';
-        } catch (jwtError) {
-            console.error('JWT verification failed:', jwtError);
-            // Fallback to decode for development
-            const decoded = jwt.decode(token);
-            return decoded?.sub || decoded?.['cognito:username'] || 'anonymous';
-        }
-    } catch (error) {
-        console.error('Token extraction error:', error);
-        return 'anonymous';
-    }
-}
+
 
 async function validateUsernameEndpoint(username, headers) {
     const validation = validateUsername(username);

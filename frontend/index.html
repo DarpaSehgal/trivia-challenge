@@ -309,6 +309,7 @@
 
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1563.0.min.js"></script>
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <script src="config.js"></script>
     <script>
         let currentSession = null;
         let currentQuestion = null;
@@ -316,9 +317,10 @@
         let timerInterval = null;
         let timeLeft = 10;
         
-        const API_BASE = '${API_BASE}';
-        const USER_POOL_ID = '${USER_POOL_ID}';
-        const CLIENT_ID = '${CLIENT_ID}';
+        // Configuration loaded from environment
+        const API_BASE = window.APP_CONFIG?.API_BASE || '/api';
+        const USER_POOL_ID = window.APP_CONFIG?.USER_POOL_ID || '';
+        const CLIENT_ID = window.APP_CONFIG?.CLIENT_ID || '';
 
         
         // Debug: Log the current origin and API base

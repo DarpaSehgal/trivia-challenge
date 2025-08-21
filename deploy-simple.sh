@@ -15,6 +15,38 @@ if ! aws sts get-caller-identity >/dev/null 2>&1; then
     exit 1
 fi
 
+# Get CloudFormation outputs
+echo "📋 Getting CloudFormation outputs..."
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+  --output text)
+
+API_GATEWAY_URL=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+  --output text)
+
+USER_POOL_ID=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
+  --output text)
+
+CLIENT_ID=$(aws cloudformation describe-stacks \
+  --stack-name trivia-challenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' \
+  --output text)
+
+# Create config.js with actual values
+echo "🔧 Generating frontend configuration..."
+sed "s|{{API_GATEWAY_URL}}|$API_GATEWAY_URL|g; s|{{USER_POOL_ID}}|$USER_POOL_ID|g; s|{{CLIENT_ID}}|$CLIENT_ID|g" \
+  frontend/config.js > /tmp/config.js
+
+# Upload frontend files
+echo "📤 Uploading frontend files..."
+aws s3 cp frontend/index.html s3://$BUCKET_NAME/ --content-type "text/html"
+aws s3 cp /tmp/config.js s3://$BUCKET_NAME/config.js --content-type "application/javascript"
+
 # Build production package
 echo "📦 Building production package..."
 rm -rf dist/

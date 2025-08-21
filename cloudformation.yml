@@ -68,7 +68,7 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
+          VALKEY_HOST: !GetAtt ValkeyServerlessCache.Endpoint.Address
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
@@ -89,12 +89,39 @@ Resources:
           };
       Environment:
         Variables:
-          VALKEY_HOST: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
+          VALKEY_HOST: !GetAtt ValkeyServerlessCache.Endpoint.Address
       VpcConfig:
         SecurityGroupIds:
           - !Ref ValkeySecurityGroupId
         SubnetIds: !Ref ValkeySubnetIds
       Timeout: 60
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: trivia-challenge-users
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: trivia-challenge-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
 
   # API Gateway
   TriviaApi:
@@ -192,7 +219,7 @@ Outputs:
 
   ValkeyEndpoint:
     Description: Valkey Serverless Cache Endpoint
-    Value: !GetAtt ValkeyServerlessCache.RedisEndpoint.Address
+    Value: !GetAtt ValkeyServerlessCache.Endpoint.Address
     Export:
       Name: !Sub '${AWS::StackName}-ValkeyEndpoint'
 
@@ -219,3 +246,21 @@ Outputs:
     Value: !GetAtt FrontendBucket.WebsiteURL
     Export:
       Name: !Sub '${AWS::StackName}-BucketWebsiteURL'
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
+  ApiGatewayUrl:
+    Description: API Gateway URL
+    Value: !Sub 'https://${TriviaApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'
