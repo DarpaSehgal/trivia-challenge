@@ -24,6 +24,10 @@ aws lambda update-function-code \
     --function-name trivia-game \
     --zip-file fileb://trivia-app-prod.zip
 
+# Wait for function update to complete
+echo "⏳ Waiting for function update to complete..."
+aws lambda wait function-updated --region us-west-2 --function-name trivia-game
+
 # Update environment variables if provided
 if [ ! -z "$VALKEY_HOST" ]; then
     echo "🔧 Updating environment variables..."
