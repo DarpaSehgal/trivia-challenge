@@ -86,7 +86,15 @@ export class TriviaStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../', {
-        exclude: ['cdk/', 'architecture/', '.github/', 'node_modules/.cache/'],
+        exclude: [
+          'cdk/**',
+          'architecture/**', 
+          '.github/**',
+          'node_modules/**',
+          '.git/**',
+          '*.md',
+          'cloudformation*.yml'
+        ],
       }),
       vpc,
       securityGroups: [lambdaSG],
@@ -102,7 +110,15 @@ export class TriviaStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'preloader.handler',
       code: lambda.Code.fromAsset('../', {
-        exclude: ['cdk/', 'architecture/', '.github/', 'node_modules/.cache/'],
+        exclude: [
+          'cdk/**',
+          'architecture/**', 
+          '.github/**',
+          'node_modules/**',
+          '.git/**',
+          '*.md',
+          'cloudformation*.yml'
+        ],
       }),
       vpc,
       securityGroups: [lambdaSG],
