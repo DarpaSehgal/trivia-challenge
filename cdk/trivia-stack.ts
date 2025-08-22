@@ -85,17 +85,15 @@ export class TriviaStack extends cdk.Stack {
     const triviaFunction = new lambda.Function(this, 'TriviaFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('../', {
-        exclude: [
-          'cdk/**',
-          'architecture/**', 
-          '.github/**',
-          'node_modules/**',
-          '.git/**',
-          '*.md',
-          'cloudformation*.yml'
-        ],
-      }),
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'CDK Lambda deployed - update code separately' })
+          };
+        };
+      `),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.seconds(30),
@@ -108,18 +106,16 @@ export class TriviaStack extends cdk.Stack {
 
     const preloaderFunction = new lambda.Function(this, 'PreloaderFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'preloader.handler',
-      code: lambda.Code.fromAsset('../', {
-        exclude: [
-          'cdk/**',
-          'architecture/**', 
-          '.github/**',
-          'node_modules/**',
-          '.git/**',
-          '*.md',
-          'cloudformation*.yml'
-        ],
-      }),
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'CDK Preloader deployed - update code separately' })
+          };
+        };
+      `),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.seconds(60),
