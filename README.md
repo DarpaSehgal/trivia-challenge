@@ -2,6 +2,8 @@
 
 A serverless trivia application built with AWS Lambda and ElastiCache Valkey Serverless, demonstrating real-world integration patterns and Valkey's key features.
 
+> **CDK Deployment Ready** - Now with proper IAM permissions configured
+
 ## 🏗️ Architecture
 
 ![AWS Trivia Challenge Architecture](architecture/aws_trivia_challenge_architecture.png)
