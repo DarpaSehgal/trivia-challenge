@@ -154,7 +154,7 @@ export class TriviaStack extends cdk.Stack {
 
     // S3 Frontend Bucket
     const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
-      bucketName: `${id}-frontend-${this.account}-${this.region}`,
+      bucketName: `${id.toLowerCase()}-frontend-${this.account}-${this.region}`,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'index.html',
       publicReadAccess: false,
