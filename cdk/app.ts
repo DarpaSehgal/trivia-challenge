@@ -2,6 +2,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { TriviaStack } from './trivia-stack';
 
+// Trigger deployment with updated IAM permissions
+
 const app = new cdk.App();
 new TriviaStack(app, 'TriviaChallenge', {
   env: {
