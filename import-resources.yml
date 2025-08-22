@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Import existing resources into CloudFormation'
+
+Resources:
+  # Import existing Valkey cache
+  ExistingValkeyCache:
+    Type: AWS::ElastiCache::ServerlessCache
+    Properties:
+      ServerlessCacheName: trivia-valkey-cache
+      Engine: valkey
+      MajorEngineVersion: '7'
+      CacheUsageLimits:
+        DataStorage:
+          Maximum: 1
+          Unit: GB
+        ECPUPerSecond:
+          Maximum: 1000
+      SecurityGroupIds:
+        - sg-03fe3c485c9c15eb7
+      SubnetIds:
+        - subnet-0775562bd0a870ec8
+        - subnet-06181d84d5df695f3
+        - subnet-0290dee7323c778c6
+
+  # Add missing API Gateway resources to existing stack
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref TriviaApi  # Reference existing API
+      ParentId: !GetAtt TriviaApi.RootResourceId
+      PathPart: '{proxy+}'
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref TriviaApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:trivia-game-trivia-challenge/invocations'
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiGatewayMethod
+    Properties:
+      RestApiId: !Ref TriviaApi
+      StageName: prod
+
+  # CloudWatch Log Groups
+  TriviaGameLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: '/aws/lambda/trivia-game-trivia-challenge'
+      RetentionInDays: 14
+
+  # SNS Topic for monitoring
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: trivia-challenge-alerts
+
+Outputs:
+  ValkeyEndpoint:
+    Value: !GetAtt ExistingValkeyCache.Endpoint.Address
+  AlertsTopicArn:
+    Value: !Ref AlertsTopic

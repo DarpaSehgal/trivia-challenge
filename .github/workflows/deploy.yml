@@ -1,9 +1,10 @@
 name: Deploy Trivia App
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+  # Disabled automatic deployment - use deploy-cdk.yml instead
+  # push:
+  #   branches: [ main ]
 
 jobs:
   deploy:

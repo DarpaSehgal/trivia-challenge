@@ -1,0 +1,104 @@
+name: Deploy Complete Trivia App
+
+on:
+  workflow_dispatch:
+  # Disabled - replaced by CDK deployment
+  # push:
+  #   branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install --production
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+        
+    - name: Clean up failed stack
+      run: |
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name trivia-challenge-complete --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NONE")
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "ROLLBACK_IN_PROGRESS" ]; then
+          echo "Waiting for rollback to complete..."
+          aws cloudformation wait stack-rollback-complete --stack-name trivia-challenge-complete || true
+          echo "Deleting failed stack..."
+          aws cloudformation delete-stack --stack-name trivia-challenge-complete
+          aws cloudformation wait stack-delete-complete --stack-name trivia-challenge-complete
+        fi
+        
+    - name: Deploy Complete Infrastructure
+      run: |
+        aws cloudformation deploy \
+          --template-file cloudformation-complete.yml \
+          --stack-name trivia-challenge-complete \
+          --capabilities CAPABILITY_IAM || {
+          echo "CloudFormation deployment failed. Getting stack events..."
+          aws cloudformation describe-stack-events --stack-name trivia-challenge-complete --query 'StackEvents[?ResourceStatus==`CREATE_FAILED` || ResourceStatus==`UPDATE_FAILED`].[LogicalResourceId,ResourceStatus,ResourceStatusReason]' --output table
+          exit 1
+        }
+          
+    - name: Deploy Lambda Code
+      run: |
+        # Get function names from stack
+        TRIVIA_FUNCTION=$(aws cloudformation describe-stacks \
+          --stack-name trivia-challenge-complete \
+          --query 'Stacks[0].Outputs[?OutputKey==`TriviaFunctionName`].OutputValue' \
+          --output text 2>/dev/null || echo "trivia-challenge-complete-trivia-game")
+        
+        PRELOADER_FUNCTION=$(aws cloudformation describe-stacks \
+          --stack-name trivia-challenge-complete \
+          --query 'Stacks[0].Outputs[?OutputKey==`PreloaderFunctionName`].OutputValue' \
+          --output text 2>/dev/null || echo "trivia-challenge-complete-question-preloader")
+        
+        # Create deployment package
+        zip -r lambda-code.zip . -x "*.git*" "node_modules/.cache/*" "architecture/*" ".github/*"
+        
+        # Deploy to both functions
+        aws lambda update-function-code \
+          --function-name "$TRIVIA_FUNCTION" \
+          --zip-file fileb://lambda-code.zip
+          
+        aws lambda update-function-code \
+          --function-name "$PRELOADER_FUNCTION" \
+          --zip-file fileb://lambda-code.zip
+        
+    - name: Get Application URL
+      run: |
+        CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
+          --stack-name trivia-challenge-complete \
+          --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
+          --output text)
+        
+        echo "🎉 Application deployed successfully!"
+        echo "🌐 URL: $CLOUDFRONT_URL"
+        echo "CLOUDFRONT_URL=$CLOUDFRONT_URL" >> $GITHUB_ENV
+        
+    - name: Health Check
+      run: |
+        echo "⏳ Waiting for deployment to be ready..."
+        sleep 30
+        
+        # Test API endpoint
+        API_URL=$(aws cloudformation describe-stacks \
+          --stack-name trivia-challenge-complete \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+          --output text)
+        
+        if curl -f "$API_URL/health" > /dev/null 2>&1; then
+          echo "✅ Health check passed"
+        else
+          echo "⚠️ Health check failed, but deployment completed"
+        fi

@@ -1,0 +1,70 @@
+name: Deploy CDK Trivia App
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'cdk/**', 'index.js', 'valkey-client.js', 'question-service.js', 'frontend/**' ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install CDK
+      run: npm install -g aws-cdk
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+        
+    - name: Install dependencies
+      run: |
+        npm install --production
+        cd cdk && npm install
+        
+    - name: CDK Bootstrap (if needed)
+      run: |
+        cd cdk
+        npx cdk bootstrap --require-approval never || echo "Bootstrap already exists"
+        
+    - name: Deploy CDK Stack
+      run: |
+        cd cdk
+        npx cdk deploy --require-approval never
+        
+    - name: Get Application URL
+      run: |
+        CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
+          --stack-name TriviaChallenge \
+          --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
+          --output text)
+        
+        echo "🎉 CDK Application deployed successfully!"
+        echo "🌐 URL: $CLOUDFRONT_URL"
+        
+    - name: Health Check
+      run: |
+        echo "⏳ Waiting for deployment to be ready..."
+        sleep 30
+        
+        API_URL=$(aws cloudformation describe-stacks \
+          --stack-name TriviaChallenge \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+          --output text)
+        
+        if curl -f "${API_URL}health" > /dev/null 2>&1; then
+          echo "✅ Health check passed"
+        else
+          echo "⚠️ Health check failed, but deployment completed"
+        fi

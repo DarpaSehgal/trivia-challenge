@@ -21,6 +21,57 @@ The application follows a serverless architecture pattern with the following key
 
 For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
+## 🚀 Quick Deploy (CDK)
+
+### One-Command Deployment
+```bash
+# Install CDK globally
+npm install -g aws-cdk
+
+# Deploy the stack
+cd cdk
+npm install
+npx cdk bootstrap  # First time only
+npx cdk deploy
+```
+
+### Fork & Deploy via GitHub Actions
+1. Fork this repository
+2. Set AWS credentials in GitHub Secrets:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+3. Push to main branch - automatic deployment via `.github/workflows/deploy-cdk.yml`
+
+## 🛠️ Manual Setup (Advanced)
+
+### Prerequisites
+- AWS CLI configured
+- Node.js 18+
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Deploy Infrastructure (CDK)
+```bash
+cd cdk
+npm install
+npx cdk bootstrap  # First time only
+npx cdk deploy
+```
+
+### 3. Get Application URL
+```bash
+# CDK automatically deploys Lambda code
+aws cloudformation describe-stacks \
+  --stack-name TriviaChallenge \
+  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
+  --output text
+```
+
+
+
 ## ✨ Features
 
 ### 🎯 Core Functionality
@@ -40,86 +91,6 @@ For detailed data flow description, see [Architecture Documentation](architectur
 - **Session Management**: `valkey:session:<uuid>`
 - **User Tracking**: `valkey:user:<id>:seen_questions`
 - **Leaderboards**: `valkey:leaderboard:<year>-<week>`
-
-## 🚀 Quick Start
-
-### Prerequisites
-- AWS CLI configured
-- Node.js 18+
-- Serverless Framework (optional)
-
-### 1. Install Dependencies
-```bash
-npm install
-```
-
-### 2. Deploy Infrastructure
-```bash
-aws cloudformation deploy \
-  --template-file cloudformation.yml \
-  --stack-name trivia-challenge \
-  --parameter-overrides \
-    ValkeySubnetIds=subnet-xxx,subnet-yyy \
-    ValkeySecurityGroupId=sg-xxx \
-  --capabilities CAPABILITY_IAM
-```
-
-### 3. Deploy Frontend
-```bash
-# Get S3 bucket name from CloudFormation
-BUCKET_NAME=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
-  --output text)
-
-# Upload frontend to S3
-aws s3 cp frontend/index.html s3://$BUCKET_NAME/ --content-type "text/html"
-
-# Get CloudFront URL
-CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
-  --output text)
-
-echo "🎉 App deployed at: $CLOUDFRONT_URL"
-```
-
-### 4. Configure Environment
-```bash
-export VALKEY_HOST=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`ValkeyEndpoint`].OutputValue' \
-  --output text)
-
-export COGNITO_USER_POOL_ID=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
-  --output text)
-
-export COGNITO_CLIENT_ID=$(aws cloudformation describe-stacks \
-  --stack-name trivia-challenge \
-  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' \
-  --output text)
-```
-
-### 5. Deploy Lambda Functions
-```bash
-# Using Serverless Framework
-serverless deploy
-
-# Or zip and upload manually
-zip -r trivia-app.zip . -x "*.git*" "node_modules/.cache/*"
-aws lambda update-function-code \
-  --function-name trivia-game \
-  --zip-file fileb://trivia-app.zip
-```
-
-### 6. Test the Application
-```bash
-# Open frontend/index.html in browser
-# Or serve locally:
-cd frontend && python3 -m http.server 8000
-```
 
 ## 📊 API Endpoints
 
@@ -153,7 +124,7 @@ POST /submit-answer
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Environment Variables (Auto-configured)
 - `VALKEY_HOST`: ElastiCache Valkey endpoint
 - `COGNITO_USER_POOL_ID`: Cognito User Pool ID
 - `COGNITO_CLIENT_ID`: Cognito Client ID
@@ -166,25 +137,20 @@ valkey:session:uuid-123           # Temporary session data
 valkey:leaderboard:2024-12        # Weekly sorted set
 ```
 
-## 🧪 Testing & Development
+## 🧪 Local Development
 
-### Local Development
+### Using CDK Local Development
 ```bash
-# Install serverless-offline for local testing
-npm install -g serverless-offline
-serverless offline start
+# Watch for changes and auto-deploy
+cd cdk
+npx cdk watch
+
+# Or synthesize CloudFormation template
+npx cdk synth
 ```
 
 ### Mock Data
 The frontend includes mock data for testing without full AWS setup.
-
-### Multi-AZ Configuration
-Update CloudFormation template to specify multiple subnet IDs for high availability:
-```yaml
-ValkeySubnetIds:
-  Type: CommaDelimitedList
-  Default: "subnet-12345,subnet-67890,subnet-abcde"
-```
 
 ## 📈 Performance Optimizations
 
@@ -195,10 +161,28 @@ ValkeySubnetIds:
 
 ## 🔒 Security Features
 
+- **VPC Isolation**: Lambda functions in private subnets
+- **TLS Encryption**: All data in transit encrypted
+- **IAM Roles**: Least privilege access
+- **Security Groups**: Network-level firewall rules
 - **Cognito Authentication**: JWT token validation
-- **VPC Security**: Valkey in private subnets
-- **CORS Configuration**: Proper cross-origin setup
-- **Input Validation**: Sanitized user inputs
+
+## 🗂️ Project Structure
+
+```
+├── architecture/              # Architecture diagrams and docs
+├── cdk/                      # CDK infrastructure code
+│   ├── trivia-stack.ts       # Main CDK stack definition
+│   ├── app.ts               # CDK app entry point
+│   └── package.json         # CDK dependencies
+├── frontend/                 # Static web files
+├── .github/workflows/        # CI/CD pipelines
+├── cloudformation.yml        # Legacy template (requires existing resources)
+├── index.js                  # Main Lambda function
+├── valkey-client.js         # Valkey connection and operations
+├── question-service.js      # OpenTDB API integration
+└── README.md                # This file
+```
 
 ## 📝 License
 
