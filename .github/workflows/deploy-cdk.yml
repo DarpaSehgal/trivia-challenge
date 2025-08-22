@@ -36,12 +36,12 @@ jobs:
     - name: CDK Bootstrap (if needed)
       run: |
         cd cdk
-        npx cdk bootstrap --require-approval never || echo "Bootstrap already exists"
+        npx cdk bootstrap --require-approval never --force || echo "Bootstrap may already exist"
         
     - name: Deploy CDK Stack
       run: |
         cd cdk
-        npx cdk deploy --require-approval never
+        npx cdk deploy --require-approval never --force
         
     - name: Get Application URL
       run: |
