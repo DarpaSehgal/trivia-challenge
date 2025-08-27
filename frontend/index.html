@@ -251,6 +251,22 @@
                         </div>
                         <p style="color: #666; font-size: 16px; margin: 0;">Remember your password? <span onclick="showSignIn()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Sign In</span></p>
                     </div>
+                    <div id="verificationForm" style="display: none; margin-bottom: 30px;">
+                        <h3 style="color: #8e44ad; margin-bottom: 20px; font-size: 20px; font-weight: 600; margin-top: 20px;">📧 Verify Your Account</h3>
+                        <input type="text" id="verificationCode" placeholder="Enter 6-digit code from email" maxlength="6" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <div id="verificationError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
+                        <div style="margin-bottom: 30px; margin-top: 20px;">
+                            <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
+                                <button onclick="verifyAccount()" style="background: linear-gradient(145deg, #ffffff, #f8f9ff); color: #8e44ad; border: none; padding: 15px 30px; border-radius: 32px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: none;">Submit</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0px;">
+                            <p style="color: #666; font-size: 16px; margin: 0 0 15px 0;">Didn't receive the code? <span onclick="resendVerificationCode()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Resend Code</span>
+                            </p>
+                            <div style="height: 1px; background: #e0e0e0; margin: 15px 0; width: 100px; margin-left: auto; margin-right: auto;"></div>
+                            <p style="color: #666; font-size: 16px; margin: 0;">Back to <span onclick="showSignIn()" style="color: #8e44ad; text-decoration: none; cursor: pointer; font-weight: 600;">Sign In</span></p>
+                        </div>
+                    </div>
                     <div id="resetPasswordForm" style="display: none; margin-bottom: 30px;">
                         <h3 style="color: #8e44ad; margin-bottom: 20px; font-size: 20px; font-weight: 600; margin-top: 20px;">🔑 New Password</h3>
                         <input type="text" id="resetCode" placeholder="Reset Code" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
@@ -318,9 +334,24 @@
         let timeLeft = 10;
         
         // Configuration loaded from environment
-        const API_BASE = window.APP_CONFIG?.API_BASE || '/api';
-        const USER_POOL_ID = window.APP_CONFIG?.USER_POOL_ID || '';
-        const CLIENT_ID = window.APP_CONFIG?.CLIENT_ID || '';
+        const API_BASE = window.APP_CONFIG?.API_BASE || 'https://lse21lqe2c.execute-api.us-west-2.amazonaws.com/prod';
+        const USER_POOL_ID = window.APP_CONFIG?.USER_POOL_ID || 'us-west-2_cxejb14Gs';
+        const CLIENT_ID = window.APP_CONFIG?.CLIENT_ID || '3urks6er89n16i5df6knkdiqqc';
+        
+        // Check if user returned from email verification or clicked email link
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (document.referrer.includes('cognito') || urlParams.get('confirmed')) {
+                showError('signInError', '✅ Account verified successfully! Please sign in below.', '#4CAF50');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (urlParams.get('verify') === 'true') {
+                // User clicked verification link in email - show verification form
+                showVerificationForm();
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
 
         
         // Debug: Log the current origin and API base
@@ -328,6 +359,7 @@
         console.log('API Base:', API_BASE);
         let authToken = null;
         let cognitoUser = null;
+        let currentEmail = null; // Store email for verification
         
         // Initialize Cognito
         const poolData = {
@@ -391,11 +423,7 @@
                     if (err.message.includes('no registered/verified email') || err.message.includes('not verified')) {
                         // User exists but email not verified - send verification email
                         cognitoUser.resendConfirmationCode((resendErr, result) => {
-                            if (!resendErr) {
-                                showError('forgotPasswordError', 'Please verify your email first. Verification link sent to your inbox.', '#ff9900');
-                            } else {
-                                showError('forgotPasswordError', 'Please verify your email first. Check your inbox for the verification link.', '#ff9900');
-                            }
+                            showError('forgotPasswordError', 'Please verify your email first. Check your inbox for the verification link.', '#ff9900');
                         });
                         return;
                     }
@@ -403,8 +431,8 @@
                     let errorMessage = err.message;
                     if (err.message.includes('Username/client id combination not found')) {
                         errorMessage = 'No account found with this email address.';
-                    } else if (!err.message.endsWith('.')) {
-                        errorMessage = err.message + '.';
+                    } else {
+                        errorMessage = err.message.endsWith('.') || err.message.endsWith('!') || err.message.endsWith('?') ? err.message : err.message + '.';
                     }
                     showError('forgotPasswordError', errorMessage);
                 }
@@ -445,9 +473,9 @@
                     if (err.message.includes('Password not long enough')) {
                         errorMessage = 'Password must be at least 8 characters long.';
                     } else if (err.message.includes('Member must satisfy regular expression pattern')) {
-                        errorMessage = 'Password cannot start or end with spaces.';
-                    } else if (!err.message.endsWith('.')) {
-                        errorMessage = err.message + '.';
+                        errorMessage = 'Password contains invalid characters. Please use letters, numbers, and symbols like !@#$%^&*()_+-=.';
+                    } else {
+                        errorMessage = err.message.endsWith('.') || err.message.endsWith('!') || err.message.endsWith('?') ? err.message : err.message + '.';
                     }
                     showError('resetPasswordError', errorMessage);
                 }
@@ -528,9 +556,9 @@
                 }
                 resultDiv.style.display = 'block';
             } catch (error) {
-                // Fallback to optimistic validation
-                resultDiv.textContent = 'Username is available (offline check)';
-                resultDiv.style.color = '#4CAF50';
+                // Show error message on API failure
+                resultDiv.textContent = 'Request failed. Please try again.';
+                resultDiv.style.color = '#ff4444';
                 resultDiv.style.display = 'block';
             }
         }
@@ -541,6 +569,7 @@
             document.getElementById('signUpForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
             document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('verificationForm').style.display = 'none';
             document.getElementById('signInTagline').style.display = 'block';
         }
         
@@ -606,16 +635,15 @@
                     } else if (err.message.includes('Invalid email address format')) {
                         errorMessage = 'Please enter a valid email address.';
                     } else {
-                        errorMessage = 'Sign up failed: ' + err.message;
-                        if (!err.message.endsWith('.')) {
-                            errorMessage += '.';
-                        }
+                        const baseMessage = 'Sign up failed: ' + err.message;
+                        errorMessage = baseMessage.endsWith('.') || baseMessage.endsWith('!') || baseMessage.endsWith('?') ? baseMessage : baseMessage + '.';
                     }
                     showError('signUpError', errorMessage);
                     return;
                 }
                 clearError('signUpError');
-                showError('signUpError', 'Account created! Check your email to verify and then sign in.', '#4CAF50');
+                currentEmail = email; // Store email for verification
+                showVerificationForm();
             });
         }
         
@@ -629,10 +657,8 @@
             
             cognitoUser.confirmRegistration(code, true, (err, result) => {
                 if (err) {
-                    let errorMessage = 'Verification failed: ' + err.message;
-                    if (!err.message.endsWith('.')) {
-                        errorMessage += '.';
-                    }
+                    const baseMessage = 'Verification failed: ' + err.message;
+                    const errorMessage = baseMessage.endsWith('.') || baseMessage.endsWith('!') || baseMessage.endsWith('?') ? baseMessage : baseMessage + '.';
                     showError('confirmError', errorMessage);
                     return;
                 }
@@ -659,13 +685,20 @@
         }
         
         async function signIn() {
+            console.log('signIn function called');
             const email = document.getElementById('signInEmail').value.trim();
             const password = document.getElementById('signInPassword').value;
+            console.log('Email:', email, 'Password length:', password.length);
             
             if (!email || !password) {
+                console.log('Missing email or password');
                 showError('signInError', 'Please enter email and password.');
                 return;
             }
+            
+            console.log('About to authenticate with Cognito');
+            console.log('User Pool ID:', USER_POOL_ID);
+            console.log('Client ID:', CLIENT_ID);
             
             const authenticationData = {
                 Username: email,
@@ -683,6 +716,7 @@
             
             cognitoUser.authenticateUser(authenticationDetails, {
                 onSuccess: (result) => {
+                    console.log('Authentication successful');
                     authToken = result.getIdToken().getJwtToken();
                     currentUsername = result.getIdToken().payload.preferred_username || email.split('@')[0];
                     
@@ -692,26 +726,49 @@
                     loadLeaderboard();
                 },
                 onFailure: (err) => {
-                    console.log('Sign in error:', err.message, 'Code:', err.code);
+                    console.log('Sign in error details:', {
+                        message: err.message,
+                        code: err.code,
+                        name: err.name,
+                        fullError: err
+                    });
+                    
+                    // Clear any previous errors first
+                    clearError('signInError');
+                    
                     if (err.message.includes('User is not confirmed') || err.message.includes('not confirmed') || err.code === 'UserNotConfirmedException') {
-                        // User exists but not verified - send verification email and show message
+                        // User exists but not verified - send code and redirect to verification form
+                        currentEmail = email; // Store email for verification
+                        
+                        const userData = {
+                            Username: email,
+                            Pool: userPool
+                        };
+                        
                         const tempCognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
                         tempCognitoUser.resendConfirmationCode((resendErr, result) => {
-                            if (!resendErr) {
-                                showError('signInError', 'Account not verified. Verification email sent. Please verify and sign in again.', '#ff9900');
-                            } else {
-                                showError('signInError', 'Account not verified. Check your email for the verification link.', '#ff9900');
-                            }
+                            // Always show verification form regardless of resend success/failure
+                            showVerificationForm();
                         });
                         return;
                     }
                     
                     let errorMessage = err.message;
-                    if (err.message.includes('Incorrect username or password') || err.message.includes('NotAuthorizedException')) {
+                    if (err.code === 'UserNotFoundException' || 
+                        err.message.includes('UserNotFoundException') ||
+                        err.message.includes('User does not exist')) {
+                        errorMessage = 'No account found with this email address.';
+                    } else if (err.message.includes('Incorrect username or password') || 
+                        err.message.includes('NotAuthorizedException') ||
+                        err.code === 'NotAuthorizedException') {
                         errorMessage = 'Incorrect email or password. Please try again.';
-                    } else if (!err.message.endsWith('.')) {
-                        errorMessage = err.message + '.';
+                    } else if (err.message.includes('USER_SRP_AUTH is not enabled')) {
+                        errorMessage = 'Authentication error. Please try again.';
+                    } else {
+                        errorMessage = err.message.endsWith('.') || err.message.endsWith('!') || err.message.endsWith('?') ? err.message : err.message + '.';
                     }
+                    
+                    console.log('Showing error message:', errorMessage);
                     showError('signInError', errorMessage);
                 }
             });
@@ -738,11 +795,15 @@
         };
         
         function showError(errorId, message, color = '#ff4444') {
+            console.log('showError called:', errorId, message);
             const errorDiv = document.getElementById(errorId);
             if (errorDiv) {
                 errorDiv.textContent = message;
                 errorDiv.style.color = color;
                 errorDiv.style.display = 'block';
+                console.log('Error div updated:', errorDiv.style.display);
+            } else {
+                console.log('Error div not found:', errorId);
             }
         }
         
@@ -751,6 +812,72 @@
             if (errorDiv) {
                 errorDiv.style.display = 'none';
             }
+        }
+        
+        function showVerificationForm() {
+            clearAllForms();
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('forgotPasswordForm').style.display = 'none';
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('verificationForm').style.display = 'block';
+            document.getElementById('signInTagline').style.display = 'none';
+        }
+        
+        function verifyAccount() {
+            const code = document.getElementById('verificationCode').value.trim();
+            
+            if (!code) {
+                showError('verificationError', 'Please enter the verification code.');
+                return;
+            }
+            
+            if (!currentEmail) {
+                showError('verificationError', 'Session expired. Please sign in again.');
+                return;
+            }
+            
+            const userData = {
+                Username: currentEmail,
+                Pool: userPool
+            };
+            
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.confirmRegistration(code, true, (err, result) => {
+                if (err) {
+                    const baseMessage = 'Verification failed: ' + err.message;
+                    const errorMessage = baseMessage.endsWith('.') || baseMessage.endsWith('!') || baseMessage.endsWith('?') ? baseMessage : baseMessage + '.';
+                    showError('verificationError', errorMessage);
+                    return;
+                }
+                clearError('verificationError');
+                showSignIn();
+                showError('signInError', '✅ Account verified successfully! Please sign in now.', '#4CAF50');
+            });
+        }
+        
+        function resendVerificationCode() {
+            if (!currentEmail) {
+                showError('verificationError', 'Session expired. Please sign in again.');
+                return;
+            }
+            
+            const userData = {
+                Username: currentEmail,
+                Pool: userPool
+            };
+            
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.resendConfirmationCode((err, result) => {
+                if (err) {
+                    showError('verificationError', 'Failed to resend code: ' + err.message);
+                    return;
+                }
+                clearError('verificationError');
+                showError('verificationError', '✅ Verification code sent! Check your email.', '#4CAF50');
+            });
         }
         
 

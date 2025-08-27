@@ -1,27 +1,7 @@
 {
-  "name": "trivia-challenge-app",
+  "name": "trivia-lambda",
   "version": "1.0.0",
-  "description": "Serverless trivia application with AWS Lambda and ElastiCache Valkey",
-  "main": "index.js",
-  "scripts": {
-    "deploy": "./deploy.sh",
-    "deploy:prod": "./deploy-production.sh",
-    "validate": "node validate-env.js",
-    "test": "echo \"No tests specified\" && exit 0",
-    "audit": "npm audit --audit-level moderate",
-    "health": "aws lambda invoke --function-name trivia-game --payload '{\"httpMethod\":\"GET\",\"path\":\"/health\"}' response.json && cat response.json"
-  },
   "dependencies": {
-    "uuid": "^9.0.0",
-    "redis": "^4.6.0",
-    "jsonwebtoken": "^9.0.0",
-    "jwks-rsa": "^3.0.0",
-    "axios": "^1.6.0"
-  },
-  "devDependencies": {
-    "jest": "^29.0.0"
-  },
-  "keywords": ["trivia", "serverless", "aws", "lambda", "valkey", "redis"],
-  "author": "Your Name",
-  "license": "MIT"
+    "@aws-sdk/client-cognito-identity-provider": "^3.0.0"
+  }
 }
