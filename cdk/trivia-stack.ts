@@ -71,12 +71,17 @@ export class TriviaStack extends cdk.Stack {
         requireDigits: false,
         requireSymbols: false,
       },
+      email: cognito.UserPoolEmail.withSES({
+        fromEmail: 'noreply@example.com',
+        fromName: 'Trivia Challenge',
+      }),
     });
 
     const userPoolClient = userPool.addClient('Client', {
       authFlows: {
         adminUserPassword: true,
         userPassword: true,
+        userSrp: true,
       },
       generateSecret: false,
     });
@@ -89,7 +94,12 @@ export class TriviaStack extends cdk.Stack {
         exports.handler = async (event) => {
           return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            },
             body: JSON.stringify({ message: 'CDK Lambda deployed - update code separately' })
           };
         };
@@ -130,6 +140,12 @@ export class TriviaStack extends cdk.Stack {
       resources: ['*'],
     }));
 
+    // Grant Cognito permissions for username checking
+    triviaFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:ListUsers'],
+      resources: [userPool.userPoolArn],
+    }));
+
     preloaderFunction.addToRolePolicy(new iam.PolicyStatement({
       actions: ['elasticache:*'],
       resources: ['*'],
@@ -143,9 +159,16 @@ export class TriviaStack extends cdk.Stack {
 
     const integration = new apigateway.LambdaIntegration(triviaFunction);
     api.root.addMethod('ANY', integration);
-    api.root.addProxy({
+    const proxy = api.root.addProxy({
       defaultIntegration: integration,
       anyMethod: true,
+    });
+    
+    // Enable CORS
+    api.root.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
     });
 
     // S3 Frontend Bucket
@@ -161,7 +184,7 @@ export class TriviaStack extends cdk.Stack {
     // CloudFront Distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(frontendBucket),
+        origin: origins.S3BucketOrigin.withOriginAccessControl(frontendBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
