@@ -342,7 +342,7 @@
         window.addEventListener('load', function() {
             const urlParams = new URLSearchParams(window.location.search);
             if (document.referrer.includes('cognito') || urlParams.get('confirmed')) {
-                showError('signInError', '✅ Account verified successfully! Please sign in below.', '#4CAF50');
+                showError('signInError', 'Account verified successfully! Please sign in below.', '#4CAF50');
                 // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else if (urlParams.get('verify') === 'true') {
@@ -465,7 +465,7 @@
             cognitoUser.confirmPassword(code, newPassword, {
                 onSuccess: () => {
                     clearError('resetPasswordError');
-                    showError('signInError', '✅ Password reset successful! Please sign in.', '#4CAF50');
+                    showError('signInError', 'Password reset successful! Please sign in.', '#4CAF50');
                     showSignIn();
                 },
                 onFailure: (err) => {
@@ -871,7 +871,7 @@
                 }
                 clearError('verificationError');
                 showSignIn();
-                showError('signInError', '✅ Account verified successfully! Please sign in now.', '#4CAF50');
+                showError('signInError', 'Account verified successfully! Please sign in now.', '#4CAF50');
             });
         }
         
@@ -894,7 +894,7 @@
                     return;
                 }
                 clearError('verificationError');
-                showError('verificationError', '✅ Verification code sent! Check your email.', '#4CAF50');
+                showError('verificationError', 'Verification code sent! Check your email.', '#4CAF50');
             });
         }
         
