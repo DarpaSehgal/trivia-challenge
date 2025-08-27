@@ -71,10 +71,7 @@ export class TriviaStack extends cdk.Stack {
         requireDigits: false,
         requireSymbols: false,
       },
-      email: cognito.UserPoolEmail.withSES({
-        fromEmail: 'noreply@example.com',
-        fromName: 'Trivia Challenge',
-      }),
+
     });
 
     const userPoolClient = userPool.addClient('Client', {
