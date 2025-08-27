@@ -749,15 +749,20 @@
                         tempCognitoUser.resendConfirmationCode((resendErr, result) => {
                             if (resendErr) {
                                 console.log('Resend error:', resendErr);
-                                // Show verification form with error context
-                                showVerificationForm();
                                 if (resendErr.message.includes('Attempt limit exceeded')) {
-                                    showError('verificationError', 'Too many verification requests. Please wait 1 hour before trying again.', '#ff9900');
+                                    // Rate limited - show error on sign-in page, don't redirect
+                                    showError('signInError', 'Too many verification requests. Please wait 1 hour before trying again.', '#ff9900');
+                                    return;
                                 } else {
+                                    // Other error - redirect to verification form
+                                    currentEmail = email;
+                                    showVerificationForm();
                                     showError('verificationError', 'Use existing code from email or click Resend Code below.', '#ff9900');
+                                    return;
                                 }
                             } else {
                                 console.log('Verification code sent successfully');
+                                currentEmail = email;
                                 showVerificationForm();
                             }
                         });
