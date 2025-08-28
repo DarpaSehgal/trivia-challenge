@@ -18,7 +18,7 @@ class ValkeyClient {
             });
             
             this.client.on('error', (err) => {
-                console.error('Valkey error', err);
+                console.error('Valkey error', this.sanitizeLogMessage(err.message));
                 this.isConnected = false;
             });
             
@@ -47,7 +47,7 @@ class ValkeyClient {
         try {
             const client = await this.connect();
             const key = `valkey:weekly_questions:${weekKey}`;
-            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(questions)), 5000); // 2 weeks TTL
+            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(questions)), 2000); // 2 weeks TTL
         } catch (error) {
             console.error('Store weekly questions failed:', this.sanitizeLogMessage(error.message));
             throw error;
@@ -73,14 +73,24 @@ class ValkeyClient {
             await this.withTimeout(client.del(key), 2000);
         } catch (error) {
             console.error('Delete weekly questions failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
     async withTimeout(promise, ms) {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Operation timeout')), ms))
-        ]);
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Operation timeout')), ms);
+        });
+        
+        try {
+            const result = await Promise.race([promise, timeoutPromise]);
+            clearTimeout(timeoutId);
+            return result;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
     }
 
 
@@ -187,7 +197,7 @@ class ValkeyClient {
             await this.withTimeout(client.zadd(key, score, `${userId}:${username}`), 2000);
             await this.withTimeout(client.expire(key, 1209600), 2000);
         } catch (error) {
-            console.error('Add to leaderboard failed:', error);
+            console.error('Add to leaderboard failed:', this.sanitizeLogMessage(error.message));
         }
     }
 
@@ -207,7 +217,7 @@ class ValkeyClient {
             }
             return leaderboard;
         } catch (error) {
-            console.error('Get leaderboard failed:', error);
+            console.error('Get leaderboard failed:', this.sanitizeLogMessage(error.message));
             return [];
         }
     }
@@ -232,7 +242,7 @@ class ValkeyClient {
             const key = `valkey:usernames:${sanitizedUsername}`;
             await this.withTimeout(client.set(key, userId), 2000);
         } catch (error) {
-            console.error('Store username failed:', error);
+            console.error('Store username failed:', this.sanitizeLogMessage(error.message));
         }
     }
 
@@ -282,6 +292,7 @@ class ValkeyClient {
     }
 
     escapeHtml(text) {
+        if (text == null) return '';
         return String(text)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -305,12 +316,21 @@ class ValkeyClient {
     }
 
     getWeekNumber(date) {
+        // Cache result for current date to avoid recalculation
+        const dateStr = date.toDateString();
+        if (this.weekCache && this.weekCache.date === dateStr) {
+            return this.weekCache.week;
+        }
+        
         // ISO 8601 week numbering
         const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         const dayNum = d.getUTCDay() || 7;
         d.setUTCDate(d.getUTCDate() + 4 - dayNum);
         const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        
+        this.weekCache = { date: dateStr, week };
+        return week;
     }
 }
 

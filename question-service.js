@@ -2,6 +2,8 @@ const axios = require('axios');
 const valkeyClient = require('./valkey-client');
 const { cleanupLegacyCache } = require('./cleanup-legacy-cache');
 
+// Sanitizes log values by removing control characters and truncating length
+// to prevent log injection attacks and improve readability
 function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
 }
@@ -14,10 +16,11 @@ class QuestionService {
 
     async fetchAndCacheQuestions(category = 'general') {
         try {
-            // One-time cleanup of legacy cache (safe to call multiple times)
-            if (!this.cleanupDone) {
-                cleanupLegacyCache().catch(err => console.error('Cleanup error:', err));
-                this.cleanupDone = true;
+            // One-time cleanup of legacy cache per day
+            const today = new Date().toDateString();
+            if (this.lastCleanupDate !== today) {
+                cleanupLegacyCache().catch(err => console.error('Cleanup error:', sanitizeLogValue(err.message)));
+                this.lastCleanupDate = today;
             }
             
             // First check weekly questions cache
@@ -33,7 +36,7 @@ class QuestionService {
             weeklyQuestions = await valkeyClient.getWeeklyQuestions(previousWeekKey);
             
             if (weeklyQuestions && weeklyQuestions.length >= 100) {
-                console.log(`Using previous week questions: ${previousWeekKey}`);
+                console.log(`Using previous week questions: ${sanitizeLogValue(previousWeekKey)}`);
                 return weeklyQuestions;
             }
             
@@ -58,10 +61,19 @@ class QuestionService {
         const week = parseInt(weekStr);
         
         if (week === 1) {
-            return `${parseInt(year) - 1}-W52`;
+            // Check if previous year has 53 weeks
+            const prevYear = parseInt(year) - 1;
+            const lastWeekOfPrevYear = this.getWeeksInYear(prevYear);
+            return `${prevYear}-W${lastWeekOfPrevYear.toString().padStart(2, '0')}`;
         } else {
             return `${year}-W${(week - 1).toString().padStart(2, '0')}`;
         }
+    }
+    
+    getWeeksInYear(year) {
+        const jan1 = new Date(year, 0, 1);
+        const dec31 = new Date(year, 11, 31);
+        return jan1.getDay() === 4 || dec31.getDay() === 4 ? 53 : 52;
     }
 
     getWeekNumber(date) {
@@ -79,10 +91,17 @@ class QuestionService {
             // Try to get seen questions with timeout
             let seenQuestions = [];
             try {
+                let timeoutId;
+                const timeoutPromise = new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error('Timeout')), 1000);
+                });
+                
                 seenQuestions = await Promise.race([
                     valkeyClient.getSeenQuestions(userId),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+                    timeoutPromise
                 ]);
+                
+                clearTimeout(timeoutId);
             } catch (error) {
                 console.error('Failed to get seen questions, using empty set:', sanitizeLogValue(error.message));
             }
@@ -104,6 +123,263 @@ class QuestionService {
     }
     
     getMockQuestions() {
+        // Reduced dataset for better performance - full questions loaded from weekly cache
+        return [
+          {
+                    "id": "mock-1",
+                    "question": "In &quot;A Hat in Time&quot;, what must Hat Kid collect to finish a level",
+                    "correct_answer": "A time piece",
+                    "incorrect_answers": [
+                              "A heart fragment",
+                              "A relic fragment",
+                              "A hat"
+                    ]
+          },
+          {
+                    "id": "mock-2",
+                    "question": "What is the name of the virus in &quot;Metal Gear Solid 1&quot;?",
+                    "correct_answer": "FOXDIE",
+                    "incorrect_answers": [
+                              "FOXENGINE",
+                              "FOXALIVE",
+                              "FOXKILL"
+                    ]
+          },
+          {
+                    "id": "mock-3",
+                    "question": "What is the name of New Zealand&#039;s indigenous people?",
+                    "correct_answer": "Maori",
+                    "incorrect_answers": [
+                              "Vikings",
+                              "Polynesians",
+                              "Samoans"
+                    ]
+          },
+          {
+                    "id": "mock-4",
+                    "question": "What year was Super Mario Bros. released?",
+                    "correct_answer": "1985",
+                    "incorrect_answers": [
+                              "1983",
+                              "1987",
+                              "1986"
+                    ]
+          },
+          {
+                    "id": "mock-5",
+                    "question": "How many zombies need to be killed to get the &quot;Zombie Genocider&quot; achievement in Dead Rising (2006)?",
+                    "correct_answer": "53,594",
+                    "incorrect_answers": [
+                              "53,593",
+                              "53,595",
+                              "53,596"
+                    ]
+          },
+          {
+                    "id": "mock-6",
+                    "question": "Which country hosted the 2022 FIFA World Cup?",
+                    "correct_answer": "Qatar",
+                    "incorrect_answers": [
+                              "USA",
+                              "Japan",
+                              "Switzerland"
+                    ]
+          },
+          {
+                    "id": "mock-7",
+                    "question": "What was the name of the German offensive operation in October 1941 to take Moscow before winter?",
+                    "correct_answer": "Operation Typhoon",
+                    "incorrect_answers": [
+                              "Operation Sunflower",
+                              "Operation Barbarossa",
+                              "Case Blue"
+                    ]
+          },
+          {
+                    "id": "mock-8",
+                    "question": "Better known by his nickname Logan, what is Wolverine&#039;s birth name?",
+                    "correct_answer": "James Howlett",
+                    "incorrect_answers": [
+                              "Logan Wolf",
+                              "Thomas Wilde",
+                              "John Savage"
+                    ]
+          },
+          {
+                    "id": "mock-9",
+                    "question": "Which of these musicals won the Tony Award for Best Musical?",
+                    "correct_answer": "Rent",
+                    "incorrect_answers": [
+                              "The Color Purple",
+                              "American Idiot",
+                              "Newsies"
+                    ]
+          },
+          {
+                    "id": "mock-10",
+                    "question": "The fictional movie &#039;Rochelle, Rochelle&#039; features in which sitcom?",
+                    "correct_answer": "Seinfeld",
+                    "incorrect_answers": [
+                              "Frasier",
+                              "Cheers",
+                              "Friends"
+                    ]
+          },
+          {
+                    "id": "mock-11",
+                    "question": "Which of the following bands is Tom DeLonge not a part of?",
+                    "correct_answer": "+44",
+                    "incorrect_answers": [
+                              "Box Car Racer",
+                              "Blink-182",
+                              "Angels &amp; Airwaves"
+                    ]
+          },
+          {
+                    "id": "mock-12",
+                    "question": "Which band is the longest active band in the world with no breaks or line-up changes?",
+                    "correct_answer": "U2",
+                    "incorrect_answers": [
+                              "Radiohead",
+                              "Rush",
+                              "Rolling Stones"
+                    ]
+          },
+          {
+                    "id": "mock-13",
+                    "question": "Who scored the injury time winning goal in the 1999 UEFA Champions League final between Manchester United and Bayern Munich?",
+                    "correct_answer": "Ole Gunnar Solskj&aelig;r",
+                    "incorrect_answers": [
+                              "Dwight Yorke",
+                              "Andy Cole",
+                              "David Beckham"
+                    ]
+          },
+          {
+                    "id": "mock-14",
+                    "question": "&quot;Gimmick!&quot; is a Japanese Famicom game that uses a sound chip expansion in the cartridge. What is it called?",
+                    "correct_answer": "FME-7",
+                    "incorrect_answers": [
+                              "VRC7",
+                              "VRC6",
+                              "MMC5"
+                    ]
+          },
+          {
+                    "id": "mock-15",
+                    "question": "In what year was &quot;Antichamber&quot; released?",
+                    "correct_answer": "2013",
+                    "incorrect_answers": [
+                              "2012",
+                              "2014",
+                              "2011"
+                    ]
+          },
+          {
+                    "id": "mock-16",
+                    "question": "What is the capital of Chile?",
+                    "correct_answer": "Santiago",
+                    "incorrect_answers": [
+                              "Valpara&iacute;so",
+                              "Copiap&oacute;",
+                              "Antofagasta"
+                    ]
+          },
+          {
+                    "id": "mock-17",
+                    "question": "Which of the following languages is used as a scripting language in the Unity 3D game engine?",
+                    "correct_answer": "C#",
+                    "incorrect_answers": [
+                              "Java",
+                              "C++",
+                              "Objective-C"
+                    ]
+          },
+          {
+                    "id": "mock-18",
+                    "question": "In &quot;Donkey Kong Country&quot;, why does Donkey Kong want to know the secret of the crystal coconut?",
+                    "correct_answer": "He&#039;s the big kahuna.",
+                    "incorrect_answers": [
+                              "To find out where all the bananas are.",
+                              "Because Diddy Kong forced him.",
+                              "He wants to punish brutes."
+                    ]
+          },
+          {
+                    "id": "mock-19",
+                    "question": "Which car manufacturer created the &quot;Aventador&quot;?",
+                    "correct_answer": "Lamborghini",
+                    "incorrect_answers": [
+                              "Ferrari",
+                              "Pagani",
+                              "Bugatti"
+                    ]
+          },
+          {
+                    "id": "mock-20",
+                    "question": "What was the first movie to ever use a Wilhelm Scream?",
+                    "correct_answer": "Distant Drums",
+                    "incorrect_answers": [
+                              "Treasure of the Sierra Madre",
+                              "The Charge at Feather River",
+                              "Indiana Jones"
+                    ]
+          },
+          {
+                    "id": "mock-21",
+                    "question": "In the 1969 Cartoon show &quot;Dastardly and Muttley in Their Flying Machines&quot;, which were NOT one of the lyrics in the opening theme?",
+                    "correct_answer": "Stab him",
+                    "incorrect_answers": [
+                              "Nab him",
+                              "Jab him",
+                              "Tab him"
+                    ]
+          },
+          {
+                    "id": "mock-22",
+                    "question": "What is the name of the planet that the Doctor from television series &quot;Doctor Who&quot; comes from?",
+                    "correct_answer": "Gallifrey",
+                    "incorrect_answers": [
+                              "Sontar",
+                              "Skaro",
+                              "Mondas"
+                    ]
+          },
+          {
+                    "id": "mock-23",
+                    "question": "&quot;The Big Bang Theory&quot; was first theorized by a priest of what religious ideology?",
+                    "correct_answer": "Catholic",
+                    "incorrect_answers": [
+                              "Christian",
+                              "Jewish",
+                              "Islamic"
+                    ]
+          },
+          {
+                    "id": "mock-24",
+                    "question": "The Touhou Project series of games is often associated with which genre?",
+                    "correct_answer": "Shoot &#039;em up",
+                    "incorrect_answers": [
+                              "Strategy",
+                              "FPS",
+                              "Casual"
+                    ]
+          },
+          {
+                    "id": "mock-25",
+                    "question": "Where are Terror Fiends more commonly found in the Nintendo game Miitopia?",
+                    "correct_answer": "New Lumos",
+                    "incorrect_answers": [
+                              "Peculia",
+                              "The Sky Scraper",
+                              "Otherworld"
+                    ]
+          }
+        ];
+    }
+    
+    getFullMockQuestions() {
+        // Full dataset available if needed
         return [
           {
                     "id": "mock-1",
@@ -620,6 +896,7 @@ class QuestionService {
     }
 
     shuffleArray(array) {
+        // Create copy to preserve immutability for question data
         const shuffled = [...array];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));

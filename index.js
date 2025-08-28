@@ -6,12 +6,13 @@ const { addSecurityHeaders } = require('./security-headers');
 const { healthCheck } = require('./health-check');
 const config = require('./config');
 const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString } = require('./input-validator');
+const rateLimiter = require('./rate-limiter');
 
 function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
 }
 
-const rateLimiter = require('./rate-limiter');
+const RESERVED_USERNAMES = ['admin', 'test', 'user', 'root', 'administrator', 'support', 'help', 'api', 'www', 'mail', 'ftp'];
 
 exports.handler = async (event) => {
     const baseHeaders = {
@@ -54,7 +55,7 @@ exports.handler = async (event) => {
 
         // Protected endpoints require authentication
         const protectedEndpoints = ['/start-game', '/submit-answer', '/end-session'];
-        const isProtected = protectedEndpoints.some(endpoint => path.includes(endpoint));
+        const isProtected = protectedEndpoints.some(endpoint => path === endpoint);
         
         if (isProtected) {
             try {
@@ -138,8 +139,7 @@ async function checkUsernameUniqueness(username, headers) {
     } catch (error) {
         console.error('Username check failed:', error);
         // Fallback validation
-        const reservedUsernames = ['admin', 'test', 'user', 'root', 'administrator', 'support', 'help', 'api', 'www', 'mail', 'ftp'];
-        const isReserved = reservedUsernames.includes(username.toLowerCase());
+        const isReserved = RESERVED_USERNAMES.includes(validation.sanitized.toLowerCase());
         return {
             statusCode: 200,
             headers,
@@ -241,6 +241,16 @@ async function submitAnswer(userId, requestData, headers) {
     }
     
     const currentQ = session.questions[session.currentQuestion];
+    
+    // Validate questionId matches current question
+    if (questionId && questionId !== currentQ.id) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Question ID does not match current question' })
+        };
+    }
+    
     const isCorrect = answer === currentQ.correct_answer;
     
     let questionScore = 0;
@@ -307,7 +317,7 @@ async function endSession(userId, sessionId, headers) {
     }
     
     // Add to leaderboard and store username
-    const username = session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
+    const username = deriveUsername(session, userId);
     try {
         await valkeyClient.addToLeaderboard(session.score, userId, username);
         await valkeyClient.storeUsername(username, userId);
@@ -316,6 +326,15 @@ async function endSession(userId, sessionId, headers) {
         await valkeyClient.deleteSession(sessionId);
     } catch (error) {
         console.error('Failed to update leaderboard:', sanitizeLogValue(error.message));
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+                error: 'Failed to record score', 
+                finalScore: session.score,
+                message: 'Session completed but score recording failed'
+            })
+        };
     }
     
     return {
@@ -365,6 +384,10 @@ async function handleHealthCheck(headers) {
             })
         };
     }
+}
+
+function deriveUsername(session, userId) {
+    return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
 }
 
 function shuffleOptions(options) {
