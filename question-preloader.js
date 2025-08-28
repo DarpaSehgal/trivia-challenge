@@ -90,7 +90,8 @@ class QuestionPreloader {
             const response = await axios.get('https://opentdb.com/api.php', {
                 params: {
                     amount: 50,
-                    type: 'multiple'
+                    type: 'multiple',
+                    difficulty: Math.random() < 0.5 ? 'easy' : 'medium'
                 },
                 timeout: 10000,
                 headers: {
