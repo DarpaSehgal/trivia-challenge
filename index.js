@@ -151,7 +151,7 @@ exports.handler = async (event) => {
             case 'GET /leaderboard':
                 return await getLeaderboard(headers);
             case 'POST /end-session':
-                return await endSession(userId, body.sessionId, headers);
+                return await endSession(userId, body.sessionId, headers, event);
             default:
                 return {
                     statusCode: 404,
@@ -424,7 +424,7 @@ async function submitAnswer(userId, requestData, headers) {
     };
 }
 
-async function endSession(userId, sessionId, headers) {
+async function endSession(userId, sessionId, headers, event) {
     if (!validateSessionId(sessionId)) {
         return {
             statusCode: 400,
@@ -452,8 +452,21 @@ async function endSession(userId, sessionId, headers) {
         };
     }
     
-    // Add to leaderboard and store username
-    const username = deriveUsername(session, userId);
+    // Get username from JWT token or derive from session
+    let username;
+    try {
+        const authHeader = event?.headers?.Authorization || event?.headers?.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const decoded = jwt.decode(token);
+            username = decoded?.preferred_username || decoded?.email?.split('@')[0] || 'Player';
+        } else {
+            username = deriveUsername(session, userId);
+        }
+    } catch (error) {
+        username = deriveUsername(session, userId);
+    }
+    
     try {
         // Ensure session cleanup happens regardless of leaderboard operation success
         try {
@@ -527,8 +540,16 @@ async function handleHealthCheck(headers) {
 }
 
 function deriveUsername(session, userId) {
-    if (!userId || typeof userId !== 'string') return 'anonymous';
-    return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
+    if (!userId || typeof userId !== 'string') return 'Player';
+    // If userId looks like an email, extract username part
+    if (userId.includes('@')) {
+        return userId.split('@')[0];
+    }
+    // If userId is a UUID, return generic name
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}/.test(userId)) {
+        return 'Player';
+    }
+    return session.username || userId || 'Player';
 }
 
 function normalizeTimeTaken(timeTaken) {
