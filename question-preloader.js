@@ -1,6 +1,13 @@
 const axios = require('axios');
 const valkeyClient = require('./valkey-client');
 
+function sanitizeLogValue(value) {
+    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+}
+
+const TARGET_QUESTIONS_PER_WEEK = 500;
+const API_BATCH_COUNT = 10;
+
 class QuestionPreloader {
     constructor() {
         this.apiDelay = 5100; // 5.1 seconds between API calls (respects 5-second limit)
@@ -9,19 +16,19 @@ class QuestionPreloader {
 
     async preloadWeeklyQuestions() {
         const weekKey = this.getWeekKey();
-        console.log(`Starting weekly question preload for week: ${weekKey}`);
+        console.log(`Starting weekly question preload for week: ${sanitizeLogValue(weekKey)}`);
         
         try {
             // Check if current week questions already exist
             const existingQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
-            if (existingQuestions && existingQuestions.length >= 500) {
-                console.log(`Week ${weekKey} already has ${existingQuestions.length} questions`);
+            if (existingQuestions && existingQuestions.length >= TARGET_QUESTIONS_PER_WEEK) {
+                console.log(`Week ${sanitizeLogValue(weekKey)} already has ${sanitizeLogValue(existingQuestions.length)} questions`);
                 return { success: true, questionsLoaded: existingQuestions.length };
             }
 
-            // Fetch 500 questions (10 API calls × 50 questions each)
+            // Fetch questions (API_BATCH_COUNT API calls × 50 questions each)
             const allQuestions = [];
-            const totalCalls = 10;
+            const totalCalls = API_BATCH_COUNT;
             
             for (let i = 0; i < totalCalls; i++) {
                 try {
@@ -32,7 +39,7 @@ class QuestionPreloader {
                     
                     if (questions && questions.length > 0) {
                         allQuestions.push(...questions);
-                        console.log(`Batch ${i + 1}: Got ${questions.length} questions from mixed categories`);
+                        console.log(`Batch ${i + 1}: Got ${sanitizeLogValue(questions.length)} questions from mixed categories`);
                     }
                     
                     // Wait 5.1 seconds before next API call (except last call)
@@ -41,7 +48,7 @@ class QuestionPreloader {
                     }
                     
                 } catch (error) {
-                    console.error(`Error in batch ${i + 1}:`, error.message);
+                    console.error(`Error in batch ${i + 1}:`, sanitizeLogValue(error.message));
                     // Continue with other batches even if one fails
                 }
             }
@@ -49,7 +56,7 @@ class QuestionPreloader {
             // Store questions for current week
             if (allQuestions.length > 0) {
                 await valkeyClient.storeWeeklyQuestions(weekKey, allQuestions);
-                console.log(`Stored ${allQuestions.length} questions for week ${weekKey}`);
+                console.log(`Stored ${sanitizeLogValue(allQuestions.length)} questions for week ${sanitizeLogValue(weekKey)}`);
                 
                 // Clean up previous week's questions
                 await this.cleanupOldQuestions(weekKey);
@@ -62,7 +69,7 @@ class QuestionPreloader {
             };
 
         } catch (error) {
-            console.error('Weekly preload failed:', error);
+            console.error('Weekly preload failed:', sanitizeLogValue(error.message));
             return { success: false, error: error.message };
         }
     }
@@ -77,7 +84,8 @@ class QuestionPreloader {
                 timeout: 10000
             });
 
-            if (response.data.response_code === 0) {
+            const responseCode = response.data.response_code;
+            if (responseCode === 0) {
                 return response.data.results.map((q, index) => ({
                     id: `mixed_${Date.now()}_${index}`,
                     question: q.question,
@@ -86,13 +94,21 @@ class QuestionPreloader {
                     category: q.category,
                     difficulty: q.difficulty
                 }));
-            } else if (response.data.response_code === 5) {
+            } else if (responseCode === 5) {
                 throw new Error('Rate limit exceeded');
+            } else if (responseCode === 1) {
+                throw new Error('No results - insufficient questions in database');
+            } else if (responseCode === 2) {
+                throw new Error('Invalid parameter');
+            } else if (responseCode === 3) {
+                throw new Error('Token not found');
+            } else if (responseCode === 4) {
+                throw new Error('Token empty');
+            } else {
+                throw new Error(`Unknown API response code: ${responseCode}`);
             }
-            
-            return [];
         } catch (error) {
-            console.error('API fetch failed:', error.message);
+            console.error('API fetch failed:', sanitizeLogValue(error.message));
             return [];
         }
     }
@@ -106,10 +122,10 @@ class QuestionPreloader {
             const currentQuestions = await valkeyClient.getWeeklyQuestions(currentWeekKey);
             if (currentQuestions && currentQuestions.length >= 400) {
                 await valkeyClient.deleteWeeklyQuestions(previousWeekKey);
-                console.log(`Cleaned up questions for previous week: ${previousWeekKey}`);
+                console.log(`Cleaned up questions for previous week: ${sanitizeLogValue(previousWeekKey)}`);
             }
         } catch (error) {
-            console.error('Cleanup failed:', error.message);
+            console.error('Cleanup failed:', sanitizeLogValue(error.message));
         }
     }
 

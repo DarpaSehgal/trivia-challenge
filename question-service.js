@@ -12,6 +12,7 @@ class QuestionService {
     constructor() {
         this.lastApiCall = 0;
         this.minInterval = 1500; // 1.5 seconds between API calls (40 calls/minute max)
+        this.lastCleanupDate = null;
     }
 
     async fetchAndCacheQuestions(category = 'general') {
@@ -57,6 +58,9 @@ class QuestionService {
     }
 
     getPreviousWeekKey(currentWeekKey) {
+        if (!currentWeekKey || !currentWeekKey.includes('-W')) {
+            throw new Error('Invalid week key format');
+        }
         const [year, weekStr] = currentWeekKey.split('-W');
         const week = parseInt(weekStr);
         

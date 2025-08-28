@@ -12,7 +12,7 @@ function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
 }
 
-const RESERVED_USERNAMES = ['admin', 'test', 'user', 'root', 'administrator', 'support', 'help', 'api', 'www', 'mail', 'ftp'];
+const TOTAL_QUESTIONS = 5;
 
 exports.handler = async (event) => {
     const baseHeaders = {
@@ -73,8 +73,14 @@ exports.handler = async (event) => {
             case 'GET /health':
                 return await handleHealthCheck(headers);
             case 'POST /validate-username':
+                if (!body.username) {
+                    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Username is required' }) };
+                }
                 return await validateUsernameEndpoint(body.username, headers);
             case 'POST /check-username':
+                if (!body.username) {
+                    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Username is required' }) };
+                }
                 return await checkUsernameUniqueness(body.username, headers);
             case 'POST /start-game':
                 return await startGame(userId, body.category, headers);
@@ -97,7 +103,13 @@ exports.handler = async (event) => {
         console.error('Request details:', {
             path: sanitizeLogValue(event.path),
             method: sanitizeLogValue(event.httpMethod),
-            userId: sanitizeLogValue(extractUserId(event)),
+            userId: (() => {
+                try {
+                    return sanitizeLogValue(extractUserId(event));
+                } catch {
+                    return 'unknown';
+                }
+            })(),
             timestamp: new Date().toISOString()
         });
         return {
@@ -188,7 +200,7 @@ async function startGame(userId, category = 'general', headers) {
             sessionId,
             question: sessionData.questions[0],
             questionNumber: 1,
-            totalQuestions: 5
+            totalQuestions: TOTAL_QUESTIONS
         })
     };
 }
@@ -240,10 +252,10 @@ async function submitAnswer(userId, requestData, headers) {
         };
     }
     
-    const currentQ = session.questions[session.currentQuestion];
+    const currentQuestion = session.questions[session.currentQuestion];
     
     // Validate questionId matches current question
-    if (questionId && questionId !== currentQ.id) {
+    if (questionId && questionId !== currentQuestion.id) {
         return {
             statusCode: 400,
             headers,
@@ -251,7 +263,7 @@ async function submitAnswer(userId, requestData, headers) {
         };
     }
     
-    const isCorrect = answer === currentQ.correct_answer;
+    const isCorrect = answer === currentQuestion.correct_answer;
     
     let questionScore = 0;
     if (isCorrect) {
@@ -264,7 +276,7 @@ async function submitAnswer(userId, requestData, headers) {
     
     const response = {
         correct: isCorrect,
-        correctAnswer: currentQ.correct_answer,
+        correctAnswer: currentQuestion.correct_answer,
         score: questionScore,
         totalScore: session.score
     };
@@ -272,7 +284,7 @@ async function submitAnswer(userId, requestData, headers) {
     if (session.currentQuestion < session.questions.length) {
         response.nextQuestion = session.questions[session.currentQuestion];
         response.questionNumber = session.currentQuestion + 1;
-        response.totalQuestions = 5;
+        response.totalQuestions = TOTAL_QUESTIONS;
     } else {
         response.gameComplete = true;
     }
@@ -319,8 +331,11 @@ async function endSession(userId, sessionId, headers) {
     // Add to leaderboard and store username
     const username = deriveUsername(session, userId);
     try {
-        await valkeyClient.addToLeaderboard(session.score, userId, username);
-        await valkeyClient.storeUsername(username, userId);
+        // Execute leaderboard and username operations in parallel
+        await Promise.all([
+            valkeyClient.addToLeaderboard(session.score, userId, username),
+            valkeyClient.storeUsername(username, userId)
+        ]);
         
         // Clean up session after completion
         await valkeyClient.deleteSession(sessionId);
@@ -387,6 +402,7 @@ async function handleHealthCheck(headers) {
 }
 
 function deriveUsername(session, userId) {
+    if (!userId) return 'anonymous';
     return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
 }
 

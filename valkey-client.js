@@ -4,6 +4,7 @@ class ValkeyClient {
     constructor() {
         this.client = null;
         this.isConnected = false;
+        this.weekCache = null;
     }
 
     async connect() {
@@ -136,7 +137,7 @@ class ValkeyClient {
             const key = `valkey:user:${sanitizedUserId}:seen_questions`;
             return await this.withTimeout(client.smembers(key), 2000);
         } catch (error) {
-            console.error('Get seen questions failed:', error);
+            console.error('Get seen questions failed:', this.sanitizeLogMessage(error.message));
             return [];
         }
     }
@@ -194,8 +195,10 @@ class ValkeyClient {
             const week = this.getWeekNumber(now);
             const key = `valkey:leaderboard:${year}-${week}`;
             
-            await this.withTimeout(client.zadd(key, score, `${userId}:${username}`), 2000);
-            await this.withTimeout(client.expire(key, 1209600), 2000);
+            const pipeline = client.multi();
+            pipeline.zadd(key, score, `${userId}:${username}`);
+            pipeline.expire(key, 1209600);
+            await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
             console.error('Add to leaderboard failed:', this.sanitizeLogMessage(error.message));
         }
@@ -212,7 +215,9 @@ class ValkeyClient {
             const results = await this.withTimeout(client.zrevrange(key, 0, 9, 'WITHSCORES'), 2000);
             const leaderboard = [];
             for (let i = 0; i < results.length; i += 2) {
-                const [userId, username] = results[i].split(':');
+                const parts = results[i].split(':');
+                const userId = parts[0];
+                const username = parts.slice(1).join(':'); // Handle usernames with colons
                 leaderboard.push({ userId, username, score: parseInt(results[i + 1]) });
             }
             return leaderboard;
@@ -251,7 +256,7 @@ class ValkeyClient {
             const client = await this.connect();
             return await this.withTimeout(client.ping(), 2000);
         } catch (error) {
-            console.error('Ping failed:', error);
+            console.error('Ping failed:', this.sanitizeLogMessage(error.message));
             throw error;
         }
     }
