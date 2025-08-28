@@ -173,257 +173,282 @@ class QuestionService {
     }
     
     getMockQuestions() {
-        // Reduced dataset for better performance - full questions loaded from weekly cache
+        // Easy and medium difficulty questions only
         return [
           {
                     "id": "mock-1",
-                    "question": "In &quot;A Hat in Time&quot;, what must Hat Kid collect to finish a level",
-                    "correct_answer": "A time piece",
+                    "question": "What is the capital of France?",
+                    "correct_answer": "Paris",
                     "incorrect_answers": [
-                              "A heart fragment",
-                              "A relic fragment",
-                              "A hat"
-                    ]
+                              "London",
+                              "Berlin",
+                              "Madrid"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-2",
-                    "question": "What is the name of the virus in &quot;Metal Gear Solid 1&quot;?",
-                    "correct_answer": "FOXDIE",
+                    "question": "Which planet is closest to the Sun?",
+                    "correct_answer": "Mercury",
                     "incorrect_answers": [
-                              "FOXENGINE",
-                              "FOXALIVE",
-                              "FOXKILL"
-                    ]
+                              "Venus",
+                              "Earth",
+                              "Mars"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-3",
-                    "question": "What is the name of New Zealand&#039;s indigenous people?",
-                    "correct_answer": "Maori",
+                    "question": "What is the chemical symbol for water?",
+                    "correct_answer": "H2O",
                     "incorrect_answers": [
-                              "Vikings",
-                              "Polynesians",
-                              "Samoans"
-                    ]
+                              "CO2",
+                              "NaCl",
+                              "CH4"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-4",
-                    "question": "What year was Super Mario Bros. released?",
-                    "correct_answer": "1985",
+                    "question": "Which gas makes up most of Earth's atmosphere?",
+                    "correct_answer": "Nitrogen",
                     "incorrect_answers": [
-                              "1983",
-                              "1987",
-                              "1986"
-                    ]
+                              "Oxygen",
+                              "Carbon Dioxide",
+                              "Argon"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-5",
-                    "question": "How many zombies need to be killed to get the &quot;Zombie Genocider&quot; achievement in Dead Rising (2006)?",
-                    "correct_answer": "53,594",
+                    "question": "What is the largest ocean on Earth?",
+                    "correct_answer": "Pacific Ocean",
                     "incorrect_answers": [
-                              "53,593",
-                              "53,595",
-                              "53,596"
-                    ]
+                              "Atlantic Ocean",
+                              "Indian Ocean",
+                              "Arctic Ocean"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-6",
-                    "question": "Which country hosted the 2022 FIFA World Cup?",
-                    "correct_answer": "Qatar",
+                    "question": "In which year did World War II end?",
+                    "correct_answer": "1945",
                     "incorrect_answers": [
-                              "USA",
-                              "Japan",
-                              "Switzerland"
-                    ]
+                              "1944",
+                              "1946",
+                              "1943"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-7",
-                    "question": "What was the name of the German offensive operation in October 1941 to take Moscow before winter?",
-                    "correct_answer": "Operation Typhoon",
+                    "question": "What is the largest mammal in the world?",
+                    "correct_answer": "Blue Whale",
                     "incorrect_answers": [
-                              "Operation Sunflower",
-                              "Operation Barbarossa",
-                              "Case Blue"
-                    ]
+                              "African Elephant",
+                              "Giraffe",
+                              "Hippopotamus"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-8",
-                    "question": "Better known by his nickname Logan, what is Wolverine&#039;s birth name?",
-                    "correct_answer": "James Howlett",
+                    "question": "Which element has the atomic number 1?",
+                    "correct_answer": "Hydrogen",
                     "incorrect_answers": [
-                              "Logan Wolf",
-                              "Thomas Wilde",
-                              "John Savage"
-                    ]
+                              "Helium",
+                              "Lithium",
+                              "Carbon"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-9",
-                    "question": "Which of these musicals won the Tony Award for Best Musical?",
-                    "correct_answer": "Rent",
+                    "question": "What is the capital of Australia?",
+                    "correct_answer": "Canberra",
                     "incorrect_answers": [
-                              "The Color Purple",
-                              "American Idiot",
-                              "Newsies"
-                    ]
+                              "Sydney",
+                              "Melbourne",
+                              "Brisbane"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-10",
-                    "question": "The fictional movie &#039;Rochelle, Rochelle&#039; features in which sitcom?",
-                    "correct_answer": "Seinfeld",
+                    "question": "Which planet is known as the Red Planet?",
+                    "correct_answer": "Mars",
                     "incorrect_answers": [
-                              "Frasier",
-                              "Cheers",
-                              "Friends"
-                    ]
+                              "Venus",
+                              "Jupiter",
+                              "Saturn"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-11",
-                    "question": "Which of the following bands is Tom DeLonge not a part of?",
-                    "correct_answer": "+44",
+                    "question": "What is the smallest country in the world?",
+                    "correct_answer": "Vatican City",
                     "incorrect_answers": [
-                              "Box Car Racer",
-                              "Blink-182",
-                              "Angels &amp; Airwaves"
-                    ]
+                              "Monaco",
+                              "San Marino",
+                              "Liechtenstein"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-12",
-                    "question": "Which band is the longest active band in the world with no breaks or line-up changes?",
-                    "correct_answer": "U2",
+                    "question": "Which mountain range contains Mount Everest?",
+                    "correct_answer": "Himalayas",
                     "incorrect_answers": [
-                              "Radiohead",
-                              "Rush",
-                              "Rolling Stones"
-                    ]
+                              "Andes",
+                              "Rocky Mountains",
+                              "Alps"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-13",
-                    "question": "Who scored the injury time winning goal in the 1999 UEFA Champions League final between Manchester United and Bayern Munich?",
-                    "correct_answer": "Ole Gunnar Solskj&aelig;r",
+                    "question": "What is the currency of Japan?",
+                    "correct_answer": "Yen",
                     "incorrect_answers": [
-                              "Dwight Yorke",
-                              "Andy Cole",
-                              "David Beckham"
-                    ]
+                              "Won",
+                              "Yuan",
+                              "Rupee"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-14",
-                    "question": "&quot;Gimmick!&quot; is a Japanese Famicom game that uses a sound chip expansion in the cartridge. What is it called?",
-                    "correct_answer": "FME-7",
+                    "question": "Which vitamin is produced when skin is exposed to sunlight?",
+                    "correct_answer": "Vitamin D",
                     "incorrect_answers": [
-                              "VRC7",
-                              "VRC6",
-                              "MMC5"
-                    ]
+                              "Vitamin A",
+                              "Vitamin C",
+                              "Vitamin B12"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-15",
-                    "question": "In what year was &quot;Antichamber&quot; released?",
-                    "correct_answer": "2013",
+                    "question": "What is the largest continent?",
+                    "correct_answer": "Asia",
                     "incorrect_answers": [
-                              "2012",
-                              "2014",
-                              "2011"
-                    ]
+                              "Africa",
+                              "North America",
+                              "Europe"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-16",
-                    "question": "What is the capital of Chile?",
-                    "correct_answer": "Santiago",
+                    "question": "Which blood type is known as the universal donor?",
+                    "correct_answer": "O-",
                     "incorrect_answers": [
-                              "Valpara&iacute;so",
-                              "Copiap&oacute;",
-                              "Antofagasta"
-                    ]
+                              "AB+",
+                              "A+",
+                              "B-"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-17",
-                    "question": "Which of the following languages is used as a scripting language in the Unity 3D game engine?",
-                    "correct_answer": "C#",
+                    "question": "What is the freezing point of water in Celsius?",
+                    "correct_answer": "0°C",
                     "incorrect_answers": [
-                              "Java",
-                              "C++",
-                              "Objective-C"
-                    ]
+                              "32°C",
+                              "-32°C",
+                              "100°C"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-18",
-                    "question": "In &quot;Donkey Kong Country&quot;, why does Donkey Kong want to know the secret of the crystal coconut?",
-                    "correct_answer": "He&#039;s the big kahuna.",
+                    "question": "Which country invented paper?",
+                    "correct_answer": "China",
                     "incorrect_answers": [
-                              "To find out where all the bananas are.",
-                              "Because Diddy Kong forced him.",
-                              "He wants to punish brutes."
-                    ]
+                              "Egypt",
+                              "Greece",
+                              "India"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-19",
-                    "question": "Which car manufacturer created the &quot;Aventador&quot;?",
-                    "correct_answer": "Lamborghini",
+                    "question": "What does WWW stand for?",
+                    "correct_answer": "World Wide Web",
                     "incorrect_answers": [
-                              "Ferrari",
-                              "Pagani",
-                              "Bugatti"
-                    ]
+                              "World War Web",
+                              "Wide World Web",
+                              "World Web Wide"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-20",
-                    "question": "What was the first movie to ever use a Wilhelm Scream?",
-                    "correct_answer": "Distant Drums",
+                    "question": "Which organ produces bile?",
+                    "correct_answer": "Liver",
                     "incorrect_answers": [
-                              "Treasure of the Sierra Madre",
-                              "The Charge at Feather River",
-                              "Indiana Jones"
-                    ]
+                              "Pancreas",
+                              "Kidney",
+                              "Stomach"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-21",
-                    "question": "In the 1969 Cartoon show &quot;Dastardly and Muttley in Their Flying Machines&quot;, which were NOT one of the lyrics in the opening theme?",
-                    "correct_answer": "Stab him",
+                    "question": "What is the boiling point of water at sea level?",
+                    "correct_answer": "100°C",
                     "incorrect_answers": [
-                              "Nab him",
-                              "Jab him",
-                              "Tab him"
-                    ]
+                              "90°C",
+                              "110°C",
+                              "120°C"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-22",
-                    "question": "What is the name of the planet that the Doctor from television series &quot;Doctor Who&quot; comes from?",
-                    "correct_answer": "Gallifrey",
+                    "question": "Which programming language was developed by James Gosling?",
+                    "correct_answer": "Java",
                     "incorrect_answers": [
-                              "Sontar",
-                              "Skaro",
-                              "Mondas"
-                    ]
+                              "Python",
+                              "C++",
+                              "JavaScript"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-23",
-                    "question": "&quot;The Big Bang Theory&quot; was first theorized by a priest of what religious ideology?",
-                    "correct_answer": "Catholic",
+                    "question": "What is the smallest prime number?",
+                    "correct_answer": "2",
                     "incorrect_answers": [
-                              "Christian",
-                              "Jewish",
-                              "Islamic"
-                    ]
+                              "1",
+                              "3",
+                              "0"
+                    ],
+                    "difficulty": "easy"
           },
           {
                     "id": "mock-24",
-                    "question": "The Touhou Project series of games is often associated with which genre?",
-                    "correct_answer": "Shoot &#039;em up",
+                    "question": "Which hormone regulates blood sugar levels?",
+                    "correct_answer": "Insulin",
                     "incorrect_answers": [
-                              "Strategy",
-                              "FPS",
-                              "Casual"
-                    ]
+                              "Adrenaline",
+                              "Cortisol",
+                              "Thyroxine"
+                    ],
+                    "difficulty": "medium"
           },
           {
                     "id": "mock-25",
-                    "question": "Where are Terror Fiends more commonly found in the Nintendo game Miitopia?",
-                    "correct_answer": "New Lumos",
+                    "question": "What is the currency of the United Kingdom?",
+                    "correct_answer": "Pound Sterling",
                     "incorrect_answers": [
-                              "Peculia",
-                              "The Sky Scraper",
-                              "Otherworld"
-                    ]
+                              "Euro",
+                              "Dollar",
+                              "Franc"
+                    ],
+                    "difficulty": "easy"
           }
         ];
     }
