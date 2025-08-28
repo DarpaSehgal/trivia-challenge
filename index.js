@@ -52,7 +52,7 @@ function validateAnswer(answer) {
     return answer.length <= 500 && !/[<>"'&\$\{\$\(]/.test(answer);
 }
 
-function validateTimeTaken(timeTaken) {
+function isValidTimeTaken(timeTaken) {
     if (typeof timeTaken !== 'number' || timeTaken < 0 || timeTaken > 300) {
         return false;
     }
@@ -331,7 +331,7 @@ async function submitAnswer(userId, requestData, headers) {
         };
     }
     
-    if (!validateTimeTaken(timeTaken)) {
+    if (!isValidTimeTaken(timeTaken)) {
         return {
             statusCode: 400,
             headers,
@@ -381,7 +381,7 @@ async function submitAnswer(userId, requestData, headers) {
     
     let questionScore = 0;
     if (isCorrect) {
-        const validTimeTaken = validateTimeTaken(timeTaken);
+        const validTimeTaken = normalizeTimeTaken(timeTaken);
         questionScore = 10 + Math.max(0, 5 - validTimeTaken);
         session.score += questionScore;
     }
@@ -528,7 +528,7 @@ function deriveUsername(session, userId) {
     return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
 }
 
-function validateTimeTaken(timeTaken) {
+function normalizeTimeTaken(timeTaken) {
     return (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 60) ? timeTaken : 30;
 }
 

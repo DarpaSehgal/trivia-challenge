@@ -193,16 +193,7 @@ class QuestionPreloader {
         return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     }
 
-    getCategoryId(category) {
-        const categories = {
-            'general': 9,
-            'science': 17,
-            'history': 23,
-            'sports': 21,
-            'entertainment': 11
-        };
-        return categories[category] || 9;
-    }
+
 
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -211,10 +202,8 @@ class QuestionPreloader {
 
 const questionPreloader = new QuestionPreloader();
 
-module.exports = questionPreloader;
-
 // Lambda handler function
-module.exports.handler = async (event, context) => {
+const handler = async (event, context) => {
     try {
         console.log('Question preloader Lambda triggered');
         const result = await questionPreloader.preloadWeeklyQuestions();
@@ -230,14 +219,17 @@ module.exports.handler = async (event, context) => {
             })
         };
     } catch (error) {
-        console.error('Handler error:', error.message);
+        const sanitizedError = String(error.message || 'Unknown error').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 200);
+        console.error('Handler error:', sanitizedError);
         return {
             statusCode: 500,
             body: JSON.stringify({
                 success: false,
-                error: error.message,
+                error: 'Question preloader failed',
                 timestamp: new Date().toISOString()
             })
         };
     }
 };
+
+module.exports = { questionPreloader, handler };

@@ -114,6 +114,7 @@ class ValkeyClient {
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
             console.error('Add seen question failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
@@ -200,6 +201,10 @@ class ValkeyClient {
             return sessionData;
         } catch (error) {
             console.error('Get session failed:', this.sanitizeLogMessage(error.message));
+            // Re-throw authorization errors but return null for other errors
+            if (error.message && error.message.includes('Unauthorized')) {
+                throw error;
+            }
             return null;
         }
     }
@@ -334,6 +339,7 @@ class ValkeyClient {
             await this.withTimeout(client.set(key, userId), 2000);
         } catch (error) {
             console.error('Store username failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
@@ -428,7 +434,6 @@ class ValkeyClient {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#x27;')
             .replace(/'/g, '&#x27;');
     }
 
