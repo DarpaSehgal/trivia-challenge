@@ -96,7 +96,8 @@ class QuestionPreloader {
                 params: {
                     amount: 50,
                     type: 'multiple',
-                    difficulty: Math.random() < 0.5 ? 'easy' : 'medium'
+                    difficulty: Math.random() < 0.5 ? 'easy' : 'medium',
+                    category: 9
                 },
                 timeout: 10000,
                 headers: {

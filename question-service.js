@@ -190,7 +190,7 @@ class QuestionService {
     }
     
     getMockQuestions() {
-        // Easy and medium difficulty questions only
+        // General Knowledge category only - easy and medium difficulty
         return [
           {
                     "id": "mock-1",
@@ -201,43 +201,11 @@ class QuestionService {
                               "Berlin",
                               "Madrid"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           },
           {
                     "id": "mock-2",
-                    "question": "Which planet is closest to the Sun?",
-                    "correct_answer": "Mercury",
-                    "incorrect_answers": [
-                              "Venus",
-                              "Earth",
-                              "Mars"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-3",
-                    "question": "What is the chemical symbol for water?",
-                    "correct_answer": "H2O",
-                    "incorrect_answers": [
-                              "CO2",
-                              "NaCl",
-                              "CH4"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-4",
-                    "question": "Which gas makes up most of Earth's atmosphere?",
-                    "correct_answer": "Nitrogen",
-                    "incorrect_answers": [
-                              "Oxygen",
-                              "Carbon Dioxide",
-                              "Argon"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-5",
                     "question": "What is the largest ocean on Earth?",
                     "correct_answer": "Pacific Ocean",
                     "incorrect_answers": [
@@ -245,10 +213,11 @@ class QuestionService {
                               "Indian Ocean",
                               "Arctic Ocean"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           },
           {
-                    "id": "mock-6",
+                    "id": "mock-3",
                     "question": "In which year did World War II end?",
                     "correct_answer": "1945",
                     "incorrect_answers": [
@@ -256,32 +225,11 @@ class QuestionService {
                               "1946",
                               "1943"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "medium"
           },
           {
-                    "id": "mock-7",
-                    "question": "What is the largest mammal in the world?",
-                    "correct_answer": "Blue Whale",
-                    "incorrect_answers": [
-                              "African Elephant",
-                              "Giraffe",
-                              "Hippopotamus"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-8",
-                    "question": "Which element has the atomic number 1?",
-                    "correct_answer": "Hydrogen",
-                    "incorrect_answers": [
-                              "Helium",
-                              "Lithium",
-                              "Carbon"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-9",
+                    "id": "mock-4",
                     "question": "What is the capital of Australia?",
                     "correct_answer": "Canberra",
                     "incorrect_answers": [
@@ -289,21 +237,11 @@ class QuestionService {
                               "Melbourne",
                               "Brisbane"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "medium"
           },
           {
-                    "id": "mock-10",
-                    "question": "Which planet is known as the Red Planet?",
-                    "correct_answer": "Mars",
-                    "incorrect_answers": [
-                              "Venus",
-                              "Jupiter",
-                              "Saturn"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-11",
+                    "id": "mock-5",
                     "question": "What is the smallest country in the world?",
                     "correct_answer": "Vatican City",
                     "incorrect_answers": [
@@ -311,21 +249,11 @@ class QuestionService {
                               "San Marino",
                               "Liechtenstein"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "medium"
           },
           {
-                    "id": "mock-12",
-                    "question": "Which mountain range contains Mount Everest?",
-                    "correct_answer": "Himalayas",
-                    "incorrect_answers": [
-                              "Andes",
-                              "Rocky Mountains",
-                              "Alps"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-13",
+                    "id": "mock-6",
                     "question": "What is the currency of Japan?",
                     "correct_answer": "Yen",
                     "incorrect_answers": [
@@ -333,21 +261,11 @@ class QuestionService {
                               "Yuan",
                               "Rupee"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           },
           {
-                    "id": "mock-14",
-                    "question": "Which vitamin is produced when skin is exposed to sunlight?",
-                    "correct_answer": "Vitamin D",
-                    "incorrect_answers": [
-                              "Vitamin A",
-                              "Vitamin C",
-                              "Vitamin B12"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-15",
+                    "id": "mock-7",
                     "question": "What is the largest continent?",
                     "correct_answer": "Asia",
                     "incorrect_answers": [
@@ -355,32 +273,11 @@ class QuestionService {
                               "North America",
                               "Europe"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           },
           {
-                    "id": "mock-16",
-                    "question": "Which blood type is known as the universal donor?",
-                    "correct_answer": "O-",
-                    "incorrect_answers": [
-                              "AB+",
-                              "A+",
-                              "B-"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-17",
-                    "question": "What is the freezing point of water in Celsius?",
-                    "correct_answer": "0°C",
-                    "incorrect_answers": [
-                              "32°C",
-                              "-32°C",
-                              "100°C"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-18",
+                    "id": "mock-8",
                     "question": "Which country invented paper?",
                     "correct_answer": "China",
                     "incorrect_answers": [
@@ -388,10 +285,11 @@ class QuestionService {
                               "Greece",
                               "India"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "medium"
           },
           {
-                    "id": "mock-19",
+                    "id": "mock-9",
                     "question": "What does WWW stand for?",
                     "correct_answer": "World Wide Web",
                     "incorrect_answers": [
@@ -399,65 +297,11 @@ class QuestionService {
                               "Wide World Web",
                               "World Web Wide"
                     ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           },
           {
-                    "id": "mock-20",
-                    "question": "Which organ produces bile?",
-                    "correct_answer": "Liver",
-                    "incorrect_answers": [
-                              "Pancreas",
-                              "Kidney",
-                              "Stomach"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-21",
-                    "question": "What is the boiling point of water at sea level?",
-                    "correct_answer": "100°C",
-                    "incorrect_answers": [
-                              "90°C",
-                              "110°C",
-                              "120°C"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-22",
-                    "question": "Which programming language was developed by James Gosling?",
-                    "correct_answer": "Java",
-                    "incorrect_answers": [
-                              "Python",
-                              "C++",
-                              "JavaScript"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-23",
-                    "question": "What is the smallest prime number?",
-                    "correct_answer": "2",
-                    "incorrect_answers": [
-                              "1",
-                              "3",
-                              "0"
-                    ],
-                    "difficulty": "easy"
-          },
-          {
-                    "id": "mock-24",
-                    "question": "Which hormone regulates blood sugar levels?",
-                    "correct_answer": "Insulin",
-                    "incorrect_answers": [
-                              "Adrenaline",
-                              "Cortisol",
-                              "Thyroxine"
-                    ],
-                    "difficulty": "medium"
-          },
-          {
-                    "id": "mock-25",
+                    "id": "mock-10",
                     "question": "What is the currency of the United Kingdom?",
                     "correct_answer": "Pound Sterling",
                     "incorrect_answers": [
@@ -465,6 +309,187 @@ class QuestionService {
                               "Dollar",
                               "Franc"
                     ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-11",
+                    "question": "Which is the longest river in the world?",
+                    "correct_answer": "Nile River",
+                    "incorrect_answers": [
+                              "Amazon River",
+                              "Mississippi River",
+                              "Yangtze River"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-12",
+                    "question": "How many continents are there?",
+                    "correct_answer": "7",
+                    "incorrect_answers": [
+                              "5",
+                              "6",
+                              "8"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-13",
+                    "question": "What is the most spoken language in the world?",
+                    "correct_answer": "Mandarin Chinese",
+                    "incorrect_answers": [
+                              "English",
+                              "Spanish",
+                              "Hindi"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-14",
+                    "question": "Which country is known as the Land of the Rising Sun?",
+                    "correct_answer": "Japan",
+                    "incorrect_answers": [
+                              "China",
+                              "South Korea",
+                              "Thailand"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-15",
+                    "question": "What is the tallest mountain in the world?",
+                    "correct_answer": "Mount Everest",
+                    "incorrect_answers": [
+                              "K2",
+                              "Kangchenjunga",
+                              "Lhotse"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-16",
+                    "question": "How many days are there in a leap year?",
+                    "correct_answer": "366",
+                    "incorrect_answers": [
+                              "365",
+                              "367",
+                              "364"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-17",
+                    "question": "Which planet is closest to Earth?",
+                    "correct_answer": "Venus",
+                    "incorrect_answers": [
+                              "Mars",
+                              "Mercury",
+                              "Jupiter"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-18",
+                    "question": "What is the capital of Canada?",
+                    "correct_answer": "Ottawa",
+                    "incorrect_answers": [
+                              "Toronto",
+                              "Vancouver",
+                              "Montreal"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-19",
+                    "question": "How many sides does a hexagon have?",
+                    "correct_answer": "6",
+                    "incorrect_answers": [
+                              "5",
+                              "7",
+                              "8"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-20",
+                    "question": "Which is the largest desert in the world?",
+                    "correct_answer": "Antarctica",
+                    "incorrect_answers": [
+                              "Sahara",
+                              "Gobi",
+                              "Arabian"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-21",
+                    "question": "What color is the sun?",
+                    "correct_answer": "White",
+                    "incorrect_answers": [
+                              "Yellow",
+                              "Orange",
+                              "Red"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-22",
+                    "question": "How many minutes are in a full day?",
+                    "correct_answer": "1440",
+                    "incorrect_answers": [
+                              "1400",
+                              "1480",
+                              "1420"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-23",
+                    "question": "What is the hardest natural substance on Earth?",
+                    "correct_answer": "Diamond",
+                    "incorrect_answers": [
+                              "Quartz",
+                              "Topaz",
+                              "Corundum"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "easy"
+          },
+          {
+                    "id": "mock-24",
+                    "question": "Which country has the most time zones?",
+                    "correct_answer": "France",
+                    "incorrect_answers": [
+                              "Russia",
+                              "United States",
+                              "China"
+                    ],
+                    "category": "General Knowledge",
+                    "difficulty": "medium"
+          },
+          {
+                    "id": "mock-25",
+                    "question": "What is the most abundant gas in Earth's atmosphere?",
+                    "correct_answer": "Nitrogen",
+                    "incorrect_answers": [
+                              "Oxygen",
+                              "Carbon Dioxide",
+                              "Argon"
+                    ],
+                    "category": "General Knowledge",
                     "difficulty": "easy"
           }
         ];
