@@ -20,7 +20,11 @@ class QuestionService {
             // One-time cleanup of legacy cache per day
             const today = new Date().toDateString();
             if (this.lastCleanupDate !== today) {
-                cleanupLegacyCache().catch(err => console.error('Cleanup error:', sanitizeLogValue(err.message)));
+                try {
+                await cleanupLegacyCache();
+            } catch (err) {
+                console.error('Cleanup error:', sanitizeLogValue(err.message));
+            }
                 this.lastCleanupDate = today;
             }
             
@@ -63,6 +67,9 @@ class QuestionService {
         }
         const [year, weekStr] = currentWeekKey.split('-W');
         const week = parseInt(weekStr);
+        if (isNaN(week) || week < 1 || week > 53) {
+            throw new Error('Invalid week number');
+        }
         
         if (week === 1) {
             // Check if previous year has 53 weeks

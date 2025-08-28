@@ -98,7 +98,7 @@ exports.handler = async (event) => {
                 };
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error:', sanitizeLogValue(error.message));
         // Log error details for monitoring
         console.error('Request details:', {
             path: sanitizeLogValue(event.path),
@@ -267,7 +267,8 @@ async function submitAnswer(userId, requestData, headers) {
     
     let questionScore = 0;
     if (isCorrect) {
-        const validTimeTaken = Math.max(0, Math.min(30, Number(timeTaken) || 0));
+        // Validate time taken - use penalty time for invalid inputs to prevent gaming
+        const validTimeTaken = (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 60) ? timeTaken : 30;
         questionScore = 10 + Math.max(0, 5 - validTimeTaken);
         session.score += questionScore;
     }
@@ -331,14 +332,15 @@ async function endSession(userId, sessionId, headers) {
     // Add to leaderboard and store username
     const username = deriveUsername(session, userId);
     try {
-        // Execute leaderboard and username operations in parallel
-        await Promise.all([
-            valkeyClient.addToLeaderboard(session.score, userId, username),
-            valkeyClient.storeUsername(username, userId)
-        ]);
-        
-        // Clean up session after completion
-        await valkeyClient.deleteSession(sessionId);
+        // Ensure session cleanup happens regardless of leaderboard operation success
+        try {
+            await Promise.all([
+                valkeyClient.addToLeaderboard(session.score, userId, username),
+                valkeyClient.storeUsername(username, userId)
+            ]);
+        } finally {
+            await valkeyClient.deleteSession(sessionId);
+        }
     } catch (error) {
         console.error('Failed to update leaderboard:', sanitizeLogValue(error.message));
         return {
@@ -371,7 +373,7 @@ async function getLeaderboard(headers) {
             body: JSON.stringify({ leaderboard })
         };
     } catch (error) {
-        console.error('Failed to get leaderboard:', error);
+        console.error('Failed to get leaderboard:', sanitizeLogValue(error.message));
         return {
             statusCode: 503,
             headers,
@@ -402,7 +404,7 @@ async function handleHealthCheck(headers) {
 }
 
 function deriveUsername(session, userId) {
-    if (!userId) return 'anonymous';
+    if (!userId || typeof userId !== 'string') return 'anonymous';
     return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
 }
 

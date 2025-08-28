@@ -190,13 +190,19 @@ class ValkeyClient {
     async addToLeaderboard(score, userId, username) {
         try {
             const client = await this.connect();
+            
+            // Sanitize inputs to prevent injection attacks
+            const sanitizedUserId = this.sanitizeUserId(userId);
+            const sanitizedUsername = this.sanitizeUsername(username);
+            const sanitizedScore = Math.max(0, Math.min(10000, Number(score) || 0));
+            
             const now = new Date();
             const year = now.getFullYear();
             const week = this.getWeekNumber(now);
             const key = `valkey:leaderboard:${year}-${week}`;
             
             const pipeline = client.multi();
-            pipeline.zadd(key, score, `${userId}:${username}`);
+            pipeline.zadd(key, sanitizedScore, `${sanitizedUserId}:${sanitizedUsername}`);
             pipeline.expire(key, 1209600);
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
@@ -266,10 +272,12 @@ class ValkeyClient {
     }
 
     sanitizeUserId(userId) {
+        if (!userId) return '';
         return String(userId).replace(/[^a-zA-Z0-9@._-]/g, '').substring(0, 100);
     }
 
     sanitizeSessionId(sessionId) {
+        if (!sessionId) return '';
         return String(sessionId).replace(/[^a-zA-Z0-9-]/g, '').substring(0, 50);
     }
 
@@ -297,7 +305,7 @@ class ValkeyClient {
     }
 
     escapeHtml(text) {
-        if (text == null) return '';
+        if (text === null || text === undefined) return '';
         return String(text)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -308,6 +316,7 @@ class ValkeyClient {
     }
 
     sanitizeUsername(username) {
+        if (!username) return '';
         return String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '').substring(0, 20);
     }
 
@@ -321,8 +330,8 @@ class ValkeyClient {
     }
 
     getWeekNumber(date) {
-        // Cache result for current date to avoid recalculation
-        const dateStr = date.toDateString();
+        // Cache result for current date to avoid recalculation - use UTC to prevent timezone issues
+        const dateStr = date.toISOString().split('T')[0];
         if (this.weekCache && this.weekCache.date === dateStr) {
             return this.weekCache.week;
         }
