@@ -150,6 +150,8 @@ exports.handler = async (event) => {
                 return await submitAnswer(userId, body, headers);
             case 'GET /leaderboard':
                 return await getLeaderboard(headers);
+            case 'POST /clear-leaderboard':
+                return await clearLeaderboard(headers);
             case 'POST /end-session':
                 return await endSession(userId, body.sessionId, headers, event);
             default:
@@ -516,6 +518,42 @@ async function getLeaderboard(headers) {
             body: JSON.stringify({ error: 'Leaderboard temporarily unavailable', leaderboard: [] })
         };
     }
+}
+
+async function clearLeaderboard(headers) {
+    try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const week = getWeekNumber(now);
+        const weekKey = `${year}-${week}`;
+        
+        const client = await valkeyClient.connect();
+        const key = `valkey:leaderboard:${weekKey}`;
+        
+        await client.del(key);
+        console.log(`Cleared leaderboard for week ${weekKey}`);
+        
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ success: true, message: `Leaderboard cleared for week ${weekKey}` })
+        };
+    } catch (error) {
+        console.error('Failed to clear leaderboard:', sanitizeLogValue(error.message));
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'Failed to clear leaderboard' })
+        };
+    }
+}
+
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
 async function handleHealthCheck(headers) {
