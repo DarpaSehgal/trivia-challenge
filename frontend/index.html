@@ -1057,7 +1057,7 @@
                 
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
-                    selectAnswer(null);
+                    selectAnswer('');
                 }
             }, 1000);
         }
@@ -1087,7 +1087,7 @@
                         username: currentUsername,
                         sessionId: currentSession,
                         questionId: currentQuestion.id,
-                        answer: selectedAnswer,
+                        answer: selectedAnswer || '',
                         timeTaken: Math.round(timeTaken)
                     })
                 });
