@@ -33,6 +33,13 @@ jobs:
         npm install --production
         cd cdk && npm install
         
+    - name: Prepare Lambda dependencies
+      run: |
+        # Ensure Lambda code has access to node_modules
+        ls -la
+        echo "Node modules contents:"
+        ls -la node_modules/ | head -10
+        
     - name: CDK Bootstrap (if needed)
       run: |
         cd cdk

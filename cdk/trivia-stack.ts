@@ -91,7 +91,14 @@ export class TriviaStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset('..', {
-        exclude: ['cdk/**', 'cdk.out/**', '.git/**', 'node_modules/**', '*.md', '.github/**']
+        exclude: ['cdk/**', 'cdk.out/**', '.git/**', '*.md', '.github/**'],
+        bundling: {
+          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
+          command: [
+            'bash', '-c',
+            'cp -r /asset-input/* /asset-output/ && cd /asset-output && npm ci --only=production'
+          ]
+        }
       }),
       vpc,
       securityGroups: [lambdaSG],
@@ -107,7 +114,14 @@ export class TriviaStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'question-preloader.handler',
       code: lambda.Code.fromAsset('..', {
-        exclude: ['cdk/**', 'cdk.out/**', '.git/**', 'node_modules/**', '*.md', '.github/**']
+        exclude: ['cdk/**', 'cdk.out/**', '.git/**', '*.md', '.github/**'],
+        bundling: {
+          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
+          command: [
+            'bash', '-c',
+            'cp -r /asset-input/* /asset-output/ && cd /asset-output && npm ci --only=production'
+          ]
+        }
       }),
       vpc,
       securityGroups: [lambdaSG],
