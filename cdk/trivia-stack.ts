@@ -90,7 +90,9 @@ export class TriviaStack extends cdk.Stack {
     const triviaFunction = new lambda.Function(this, 'TriviaFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('.'),
+      code: lambda.Code.fromAsset('..', {
+        exclude: ['cdk/**', 'cdk.out/**', '.git/**', 'node_modules/**', '*.md', '.github/**']
+      }),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.seconds(30),
@@ -104,7 +106,9 @@ export class TriviaStack extends cdk.Stack {
     const preloaderFunction = new lambda.Function(this, 'PreloaderFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'question-preloader.handler',
-      code: lambda.Code.fromAsset('.'),
+      code: lambda.Code.fromAsset('..', {
+        exclude: ['cdk/**', 'cdk.out/**', '.git/**', 'node_modules/**', '*.md', '.github/**']
+      }),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.minutes(15), // 15 minutes for 10 API calls

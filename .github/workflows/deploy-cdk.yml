@@ -43,10 +43,15 @@ jobs:
         cd cdk
         npm run build
         
+    - name: Synthesize CDK
+      run: |
+        cd cdk
+        npx cdk synth
+        
     - name: Deploy CDK Stack
       run: |
         cd cdk
-        npx cdk deploy --app "node app.js" --require-approval never --force
+        npx cdk deploy --require-approval never --force
         
     - name: Get Application URL
       run: |
