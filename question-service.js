@@ -30,10 +30,27 @@ function sanitizeQuestionText(text) {
     if (!text || typeof text !== 'string') {
         return '';
     }
-    return text.replace(/[<>"'&]/g, (match) => {
-        const entities = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' };
-        return entities[match] || match;
-    }).substring(0, 500);
+    // First decode HTML entities to make text readable
+    const decoded = text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#039;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&rsquo;/g, "'")
+        .replace(/&lsquo;/g, "'")
+        .replace(/&rdquo;/g, '"')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&aelig;/g, 'æ')
+        .replace(/&iacute;/g, 'í')
+        .replace(/&oacute;/g, 'ó')
+        .replace(/&ccedil;/g, 'ç')
+        .replace(/&uuml;/g, 'ü');
+    
+    // Then sanitize any remaining dangerous characters
+    return decoded.replace(/[<>]/g, '').substring(0, 500);
 }
 
 class QuestionService {
