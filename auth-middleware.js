@@ -1,58 +1,66 @@
 const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
-const { promisify } = require('util');
 
-const client = jwksClient({
-    jwksUri: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`,
-    cache: true,
-    cacheMaxAge: 600000 // 10 minutes
-});
-
-function getKey(header, callback) {
-    client.getSigningKey(header.kid, (err, key) => {
-        if (err) {
-            callback(err);
-            return;
-        }
-        const signingKey = key.publicKey || key.rsaPublicKey;
-        callback(null, signingKey);
-    });
-}
-
-const jwtVerifyAsync = promisify(jwt.verify);
-
-async function verifyToken(token) {
-    return await jwtVerifyAsync(token, getKey, {
-        audience: process.env.COGNITO_CLIENT_ID,
-        issuer: `https://cognito-idp.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-        algorithms: ['RS256']
-    });
-}
-
-function requireAuth(event) {
-    const token = event.headers.Authorization?.replace('Bearer ', '') || event.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-        throw new Error('Authorization token required');
-    }
-    
-    return verifyToken(token);
+function sanitizeLogValue(value) {
+    return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 200);
 }
 
 function extractUserId(event) {
     try {
-        const token = event.headers.Authorization?.replace('Bearer ', '') || event.headers.authorization?.replace('Bearer ', '');
-        if (!token) return 'anonymous';
+        if (!event || typeof event !== 'object') {
+            throw new Error('Invalid event object');
+        }
+        
+        const headers = event.headers || {};
+        const authHeader = headers.Authorization || headers.authorization;
+        
+        if (!authHeader || typeof authHeader !== 'string') {
+            throw new Error('Missing authorization header');
+        }
+        
+        if (!authHeader.startsWith('Bearer ')) {
+            throw new Error('Invalid authorization format');
+        }
+        
+        const token = authHeader.substring(7).trim();
+        if (!token || token.length < 10) {
+            throw new Error('Invalid token format');
+        }
+        
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            throw new Error('Invalid JWT structure');
+        }
         
         const decoded = jwt.decode(token);
-        return decoded?.sub || decoded?.['cognito:username'] || 'anonymous';
+        
+        if (!decoded || typeof decoded !== 'object') {
+            throw new Error('Invalid token payload');
+        }
+        
+        if (!decoded.sub || typeof decoded.sub !== 'string') {
+            throw new Error('Missing or invalid user ID in token');
+        }
+        
+        if (decoded.sub.length > 100 || !/^[a-zA-Z0-9\-_]+$/.test(decoded.sub)) {
+            throw new Error('Invalid user ID format');
+        }
+        
+        return decoded.sub;
     } catch (error) {
-        return 'anonymous';
+        console.error('Authentication error:', sanitizeLogValue(error.message));
+        throw new Error('Authentication failed');
     }
 }
 
+async function requireAuth(event) {
+    const userId = extractUserId(event);
+    if (!userId) {
+        throw new Error('Authentication required');
+    }
+    return userId;
+}
+
 module.exports = {
-    requireAuth,
     extractUserId,
-    verifyToken
+    requireAuth
 };

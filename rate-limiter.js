@@ -1,59 +1,52 @@
-const config = require('./config');
-
 class RateLimiter {
     constructor() {
         this.requests = new Map();
-        this.maxSize = 10000;
-        this.lastCleanup = Date.now();
-        this.cleanupThreshold = 60000; // 1 minute
+        this.windowMs = 60000; // 1 minute
+        this.maxRequests = 100; // per window
     }
-
-    checkRateLimit(userId) {
+    
+    checkRateLimit(identifier) {
+        if (!identifier) {
+            identifier = 'anonymous';
+        }
+        
         const now = Date.now();
+        const windowStart = now - this.windowMs;
         
-        // Trigger cleanup if needed (no persistent timers)
-        if (now - this.lastCleanup > this.cleanupThreshold) {
-            this.cleanup();
-            this.lastCleanup = now;
+        if (!this.requests.has(identifier)) {
+            this.requests.set(identifier, []);
         }
         
-        let userRequests = this.requests.get(userId) || [];
-        const cutoff = now - config.rateLimitWindow;
+        const userRequests = this.requests.get(identifier);
         
-        // Remove expired requests in-place to avoid array creation
-        let writeIndex = 0;
-        for (let readIndex = 0; readIndex < userRequests.length; readIndex++) {
-            if (userRequests[readIndex] > cutoff) {
-                userRequests[writeIndex++] = userRequests[readIndex];
-            }
-        }
-        userRequests.length = writeIndex;
+        // Remove old requests outside the window
+        const validRequests = userRequests.filter(timestamp => timestamp > windowStart);
         
-        if (userRequests.length >= config.rateLimit) {
+        if (validRequests.length >= this.maxRequests) {
             return false;
         }
         
-        userRequests.push(now);
-        this.requests.set(userId, userRequests);
+        validRequests.push(now);
+        this.requests.set(identifier, validRequests);
         
-        // Prevent memory leak
-        if (this.requests.size > this.maxSize) {
+        // Cleanup old entries periodically
+        if (Math.random() < 0.01) {
             this.cleanup();
         }
         
         return true;
     }
-
+    
     cleanup() {
         const now = Date.now();
-        const cutoff = now - config.rateLimitWindow;
+        const windowStart = now - this.windowMs;
         
-        for (const [userId, requests] of this.requests.entries()) {
-            const validRequests = requests.filter(time => time > cutoff);
+        for (const [identifier, requests] of this.requests.entries()) {
+            const validRequests = requests.filter(timestamp => timestamp > windowStart);
             if (validRequests.length === 0) {
-                this.requests.delete(userId);
+                this.requests.delete(identifier);
             } else {
-                this.requests.set(userId, validRequests);
+                this.requests.set(identifier, validRequests);
             }
         }
     }

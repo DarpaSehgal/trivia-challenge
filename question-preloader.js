@@ -1,8 +1,20 @@
 const axios = require('axios');
 const valkeyClient = require('./valkey-client');
+const { v4: uuidv4 } = require('uuid');
 
 function sanitizeLogValue(value) {
-    return String(value || '').replace(/[\r\n\t<>"'&]/g, ' ').slice(0, 200);
+    return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').slice(0, 200);
+}
+
+function validateInput(input, type, maxLength = 100) {
+    if (input === null || input === undefined) {
+        throw new Error(`${type} is required`);
+    }
+    const str = String(input);
+    if (str.length > maxLength) {
+        throw new Error(`${type} exceeds maximum length of ${maxLength}`);
+    }
+    return str;
 }
 
 const TARGET_QUESTIONS_PER_WEEK = 500;
@@ -30,7 +42,7 @@ class QuestionPreloader {
             const allQuestions = [];
             for (let i = 0; i < API_BATCH_COUNT; i++) {
                 try {
-                    console.log(`Fetching batch ${i + 1}/${totalCalls}...`);
+                    console.log(`Fetching batch ${i + 1}/${API_BATCH_COUNT}...`);
                     
                     // Fetch 50 questions from all categories
                     const questions = await this.fetchQuestionsFromAPI();
@@ -78,19 +90,40 @@ class QuestionPreloader {
                     amount: 50,
                     type: 'multiple'
                 },
-                timeout: 10000
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'AWS-Lambda-Trivia-App/1.0'
+                },
+                validateStatus: (status) => status === 200
             });
+
+            if (!response.data || typeof response.data !== 'object') {
+                throw new Error('Invalid API response format');
+            }
 
             const responseCode = response.data.response_code;
             if (responseCode === 0) {
-                return response.data.results.map((q, index) => ({
-                    id: `mixed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
-                    question: q.question,
-                    correct_answer: q.correct_answer,
-                    incorrect_answers: q.incorrect_answers,
-                    category: q.category,
-                    difficulty: q.difficulty
-                }));
+                if (!Array.isArray(response.data.results)) {
+                    throw new Error('Invalid results format');
+                }
+                
+                return response.data.results.map((q, index) => {
+                    // Validate and sanitize question data
+                    if (!q || typeof q !== 'object') {
+                        throw new Error('Invalid question object');
+                    }
+                    
+                    return {
+                        id: uuidv4(), // Use secure UUID instead of predictable ID
+                        question: validateInput(q.question, 'question', 500),
+                        correct_answer: validateInput(q.correct_answer, 'correct_answer', 200),
+                        incorrect_answers: Array.isArray(q.incorrect_answers) 
+                            ? q.incorrect_answers.map(a => validateInput(a, 'incorrect_answer', 200))
+                            : [],
+                        category: validateInput(q.category || 'General', 'category', 100),
+                        difficulty: validateInput(q.difficulty || 'medium', 'difficulty', 20)
+                    };
+                });
             } else if (responseCode === 5) {
                 throw new Error('Rate limit exceeded');
             } else if (responseCode === 1) {
@@ -102,7 +135,7 @@ class QuestionPreloader {
             } else if (responseCode === 4) {
                 throw new Error('Token empty');
             } else {
-                throw new Error(`Unknown API response code: ${responseCode}`);
+                throw new Error(`Unknown API response code: ${sanitizeLogValue(responseCode)}`);
             }
         } catch (error) {
             console.error('API fetch failed:', sanitizeLogValue(error.message));
@@ -176,4 +209,35 @@ class QuestionPreloader {
     }
 }
 
-module.exports = new QuestionPreloader();
+const questionPreloader = new QuestionPreloader();
+
+module.exports = questionPreloader;
+
+// Lambda handler function
+module.exports.handler = async (event, context) => {
+    try {
+        console.log('Question preloader Lambda triggered');
+        const result = await questionPreloader.preloadWeeklyQuestions();
+        
+        return {
+            statusCode: result.success ? 200 : 500,
+            body: JSON.stringify({
+                success: result.success,
+                questionsLoaded: result.questionsLoaded || 0,
+                weekKey: result.weekKey,
+                error: result.error,
+                timestamp: new Date().toISOString()
+            })
+        };
+    } catch (error) {
+        console.error('Handler error:', error.message);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            })
+        };
+    }
+};

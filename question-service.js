@@ -5,7 +5,35 @@ const { cleanupLegacyCache } = require('./cleanup-legacy-cache');
 // Sanitizes log values by removing control characters and truncating length
 // to prevent log injection attacks and improve readability
 function sanitizeLogValue(value) {
-    return String(value || '').replace(/[\r\n\t<>"'&]/g, ' ').slice(0, 200);
+    return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').slice(0, 200);
+}
+
+function validateUserId(userId) {
+    if (!userId || typeof userId !== 'string' || userId.length > 100) {
+        throw new Error('Invalid user ID');
+    }
+    if (!/^[a-zA-Z0-9\-_@.]+$/.test(userId)) {
+        throw new Error('User ID contains invalid characters');
+    }
+    return userId;
+}
+
+function validateCategory(category) {
+    const validCategories = ['general', 'science', 'history', 'sports', 'entertainment'];
+    if (category && (!validCategories.includes(category.toLowerCase()) || typeof category !== 'string')) {
+        throw new Error('Invalid category');
+    }
+    return category ? category.toLowerCase() : 'general';
+}
+
+function sanitizeQuestionText(text) {
+    if (!text || typeof text !== 'string') {
+        return '';
+    }
+    return text.replace(/[<>"'&]/g, (match) => {
+        const entities = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' };
+        return entities[match] || match;
+    }).substring(0, 500);
 }
 
 class QuestionService {
@@ -97,9 +125,11 @@ class QuestionService {
 
     async getGameQuestions(userId, category = 'general') {
         try {
-            const allQuestions = await this.fetchAndCacheQuestions(category);
+            validateUserId(userId);
+            const validatedCategory = validateCategory(category);
             
-            // Try to get seen questions with timeout
+            const allQuestions = await this.fetchAndCacheQuestions(validatedCategory);
+            
             let seenQuestions = [];
             try {
                 let timeoutId;
@@ -117,19 +147,28 @@ class QuestionService {
                 console.error('Failed to get seen questions, using empty set:', sanitizeLogValue(error.message));
             }
             
-            // Filter out seen questions using Set for O(1) lookup
-            const seenQuestionsSet = new Set(seenQuestions);
-            const unseenQuestions = allQuestions.filter(q => !seenQuestionsSet.has(q.id));
+            const sanitizedQuestions = allQuestions.map(q => ({
+                ...q,
+                question: sanitizeQuestionText(q.question),
+                correct_answer: sanitizeQuestionText(q.correct_answer),
+                incorrect_answers: Array.isArray(q.incorrect_answers) 
+                    ? q.incorrect_answers.map(a => sanitizeQuestionText(a))
+                    : []
+            }));
             
-            // If less than 5 unseen questions, just use all questions
+            const seenQuestionsSet = new Set(seenQuestions);
+            const unseenQuestions = sanitizedQuestions.filter(q => 
+                q.id && !seenQuestionsSet.has(q.id)
+            );
+            
             if (unseenQuestions.length < 5) {
-                return this.shuffleArray(allQuestions).slice(0, 5);
+                return this.shuffleArray(sanitizedQuestions).slice(0, 5);
             }
             
             return this.shuffleArray(unseenQuestions).slice(0, 5);
         } catch (error) {
-            console.error('Error getting game questions, using mock:', error);
-            return this.getMockQuestions();
+            console.error('Error getting game questions, using mock:', sanitizeLogValue(error.message));
+            return this.getMockQuestions().slice(0, 5);
         }
     }
     
@@ -907,8 +946,15 @@ class QuestionService {
     }
 
     shuffleArray(array) {
-        // Create copy to preserve immutability for question data
-        const shuffled = [...array];
+        if (!Array.isArray(array) || array.length === 0) {
+            return [];
+        }
+        
+        const validQuestions = array.filter(q => 
+            q && typeof q === 'object' && q.id && q.question && q.correct_answer
+        );
+        
+        const shuffled = [...validQuestions];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];

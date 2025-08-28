@@ -119,27 +119,54 @@ class ValkeyClient {
 
     async addSeenQuestions(userId, questionIds) {
         try {
+            this.validateUserId(userId);
+            
+            if (!Array.isArray(questionIds) || questionIds.length === 0) {
+                return;
+            }
+            
+            if (questionIds.length > 100) {
+                throw new Error('Too many question IDs');
+            }
+            
+            const validQuestionIds = questionIds.filter(id => {
+                if (!id || typeof id !== 'string' || id.length > 100) {
+                    return false;
+                }
+                return !/[<>"'&\$\{\$\(]/.test(id);
+            });
+            
+            if (validQuestionIds.length === 0) {
+                return;
+            }
+            
             const client = await this.connect();
             const sanitizedUserId = this.sanitizeUserId(userId);
-            const sanitizedQuestionIds = questionIds.map(id => String(id).replace(/[^a-zA-Z0-9_-]/g, ''));
+            const sanitizedQuestionIds = validQuestionIds.map(id => String(id).replace(/[^a-zA-Z0-9_-]/g, ''));
             const key = `valkey:user:${sanitizedUserId}:seen_questions`;
             
-            // Batch operation using pipeline
             const pipeline = client.multi();
             pipeline.sadd(key, ...sanitizedQuestionIds);
             pipeline.expire(key, 604800);
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
             console.error('Add seen questions failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
     async getSeenQuestions(userId) {
         try {
+            this.validateUserId(userId);
+            
             const client = await this.connect();
             const sanitizedUserId = this.sanitizeUserId(userId);
             const key = `valkey:user:${sanitizedUserId}:seen_questions`;
-            return await this.withTimeout(client.smembers(key), 2000);
+            const seenQuestions = await this.withTimeout(client.smembers(key), 2000);
+            
+            return (seenQuestions || []).filter(id => 
+                id && typeof id === 'string' && id.length <= 100
+            );
         } catch (error) {
             console.error('Get seen questions failed:', this.sanitizeLogMessage(error.message));
             return [];
@@ -148,57 +175,105 @@ class ValkeyClient {
 
 
 
-    async getSession(sessionId) {
+    async getSession(sessionId, userId = null) {
         try {
+            this.validateSessionId(sessionId);
+            
             const client = await this.connect();
             const sanitizedSessionId = this.sanitizeSessionId(sessionId);
             const key = `valkey:session:${sanitizedSessionId}`;
             const session = await this.withTimeout(client.get(key), 2000);
-            return session ? this.parseJsonSafely(session) : null;
+            
+            if (!session) {
+                return null;
+            }
+            
+            const sessionData = this.parseJsonSafely(session);
+            
+            if (userId) {
+                this.validateUserId(userId);
+                if (sessionData && sessionData.userId !== userId) {
+                    throw new Error('Unauthorized session access');
+                }
+            }
+            
+            return sessionData;
         } catch (error) {
             console.error('Get session failed:', this.sanitizeLogMessage(error.message));
             return null;
         }
     }
 
-    async setSession(sessionId, data, ttl = 3600) {
+    async setSession(sessionId, data, ttl = 3600, userId = null) {
         try {
+            this.validateSessionId(sessionId);
+            
+            if (userId) {
+                this.validateUserId(userId);
+                if (data.userId && data.userId !== userId) {
+                    throw new Error('Session user ID mismatch');
+                }
+            }
+            
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid session data');
+            }
+            
+            const serializedData = JSON.stringify(data);
+            if (serializedData.length > 100000) {
+                throw new Error('Session data too large');
+            }
+            
             const client = await this.connect();
             const sanitizedSessionId = this.sanitizeSessionId(sessionId);
             const key = `valkey:session:${sanitizedSessionId}`;
-            await this.withTimeout(client.setex(key, ttl, JSON.stringify(data)), 2000);
+            await this.withTimeout(client.setex(key, ttl, serializedData), 2000);
         } catch (error) {
             console.error('Set session failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
-    async updateSession(sessionId, data) {
-        return this.setSession(sessionId, data);
+    async updateSession(sessionId, data, userId = null) {
+        return this.setSession(sessionId, data, 3600, userId);
     }
 
-    async createSession(sessionId, data) {
-        return this.setSession(sessionId, data);
+    async createSession(sessionId, data, userId = null) {
+        return this.setSession(sessionId, data, 3600, userId);
     }
 
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId, userId = null) {
         try {
+            this.validateSessionId(sessionId);
+            
+            if (userId) {
+                const sessionData = await this.getSession(sessionId, userId);
+                if (!sessionData) {
+                    throw new Error('Session not found or unauthorized');
+                }
+            }
+            
             const client = await this.connect();
             const sanitizedSessionId = this.sanitizeSessionId(sessionId);
             const key = `valkey:session:${sanitizedSessionId}`;
             await this.withTimeout(client.del(key), 2000);
         } catch (error) {
             console.error('Delete session failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
     async addToLeaderboard(score, userId, username) {
         try {
+            this.validateScore(score);
+            this.validateUserId(userId);
+            this.validateUsername(username);
+            
             const client = await this.connect();
             
-            // Sanitize inputs to prevent injection attacks
             const sanitizedUserId = this.sanitizeUserId(userId);
             const sanitizedUsername = this.sanitizeUsername(username);
-            const sanitizedScore = Math.max(0, Math.min(10000, Number(score) || 0));
+            const sanitizedScore = Math.max(0, Math.min(1000, Number(score) || 0));
             
             const now = new Date();
             const year = now.getFullYear();
@@ -211,6 +286,7 @@ class ValkeyClient {
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
             console.error('Add to leaderboard failed:', this.sanitizeLogMessage(error.message));
+            throw error;
         }
     }
 
@@ -272,7 +348,44 @@ class ValkeyClient {
     }
 
     sanitizeLogMessage(message) {
-        return String(message).replace(/[\r\n\t]/g, ' ').substring(0, 500);
+        return String(message).replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 500);
+    }
+    
+    validateUserId(userId) {
+        if (!userId || typeof userId !== 'string' || userId.length > 100) {
+            throw new Error('Invalid user ID');
+        }
+        if (!/^[a-zA-Z0-9\-_@.]+$/.test(userId)) {
+            throw new Error('User ID contains invalid characters');
+        }
+        return userId;
+    }
+    
+    validateSessionId(sessionId) {
+        if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 100) {
+            throw new Error('Invalid session ID');
+        }
+        if (!/^[a-zA-Z0-9\-_]+$/.test(sessionId)) {
+            throw new Error('Session ID contains invalid characters');
+        }
+        return sessionId;
+    }
+    
+    validateScore(score) {
+        if (typeof score !== 'number' || score < 0 || score > 1000) {
+            throw new Error('Invalid score');
+        }
+        return score;
+    }
+    
+    validateUsername(username) {
+        if (!username || typeof username !== 'string' || username.length > 50) {
+            throw new Error('Invalid username');
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            throw new Error('Username contains invalid characters');
+        }
+        return username;
     }
 
     sanitizeUserId(userId) {

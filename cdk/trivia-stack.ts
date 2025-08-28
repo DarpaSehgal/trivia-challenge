@@ -90,20 +90,7 @@ export class TriviaStack extends cdk.Stack {
     const triviaFunction = new lambda.Function(this, 'TriviaFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-        exports.handler = async (event) => {
-          return {
-            statusCode: 200,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-            },
-            body: JSON.stringify({ message: 'CDK Lambda deployed - update code separately' })
-          };
-        };
-      `),
+      code: lambda.Code.fromAsset('.'),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.seconds(30),
@@ -116,16 +103,8 @@ export class TriviaStack extends cdk.Stack {
 
     const preloaderFunction = new lambda.Function(this, 'PreloaderFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'preloader-lambda.handler',
-      code: lambda.Code.fromInline(`
-        exports.handler = async (event) => {
-          return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: 'CDK Preloader deployed - update code separately' })
-          };
-        };
-      `),
+      handler: 'question-preloader.handler',
+      code: lambda.Code.fromAsset('.'),
       vpc,
       securityGroups: [lambdaSG],
       timeout: cdk.Duration.minutes(15), // 15 minutes for 10 API calls

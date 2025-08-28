@@ -9,7 +9,54 @@ const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString }
 const rateLimiter = require('./rate-limiter');
 
 function sanitizeLogValue(value) {
-    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+    return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 200);
+}
+
+function validateQuestionId(questionId) {
+    if (!questionId || typeof questionId !== 'string') {
+        return false;
+    }
+    
+    if (questionId.length > 100 || questionId.length < 5) {
+        return false;
+    }
+    
+    const maliciousPatterns = [
+        /<script/i, /javascript:/i, /on\w+=/i, /\$\{/, /\$\(/, /eval\(/i, /function\(/i
+    ];
+    
+    if (maliciousPatterns.some(pattern => pattern.test(questionId))) {
+        return false;
+    }
+    
+    const validFormats = [
+        /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
+        /^mixed_\d+_[a-z0-9]+_\d+$/i,
+        /^mock_\d+$/i
+    ];
+    
+    return validFormats.some(format => format.test(questionId));
+}
+
+function validateSessionId(sessionId) {
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 100) {
+        return false;
+    }
+    return !/[<>"'&\$\{\$\(]/.test(sessionId);
+}
+
+function validateAnswer(answer) {
+    if (answer === undefined || answer === null || typeof answer !== 'string') {
+        return false;
+    }
+    return answer.length <= 500 && !/[<>"'&\$\{\$\(]/.test(answer);
+}
+
+function validateTimeTaken(timeTaken) {
+    if (typeof timeTaken !== 'number' || timeTaken < 0 || timeTaken > 300) {
+        return false;
+    }
+    return true;
 }
 
 const TOTAL_QUESTIONS = 5;
@@ -42,15 +89,21 @@ exports.handler = async (event) => {
             }
             body = parseResult.data;
         }
-        let userId;
+        let userId = null;
         try {
             userId = extractUserId(event);
+            if (userId && (typeof userId !== 'string' || userId.length > 100 || !/^[a-zA-Z0-9\-_@.]+$/.test(userId))) {
+                console.warn('Invalid user ID format detected');
+                userId = null;
+            }
         } catch (error) {
+            console.warn('User ID extraction failed:', sanitizeLogValue(error.message));
             userId = null;
         }
         
-        // Rate limiting
-        if (!rateLimiter.checkRateLimit(userId)) {
+        // Rate limiting with IP fallback for unauthenticated users
+        const rateLimitKey = userId || event.requestContext?.identity?.sourceIp || 'anonymous';
+        if (!rateLimiter.checkRateLimit(rateLimitKey)) {
             return {
                 statusCode: 429,
                 headers,
@@ -166,6 +219,32 @@ async function checkUsernameUniqueness(username, headers) {
 }
 
 async function startGame(userId, category = 'general', headers) {
+    const validCategories = ['general', 'science', 'history', 'sports', 'entertainment'];
+    if (category) {
+        if (typeof category !== 'string' || category.length > 50) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Invalid category format' })
+            };
+        }
+        
+        if (/<|>|script|javascript|eval|function/i.test(category)) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Invalid category content' })
+            };
+        }
+        
+        if (!validCategories.includes(category.toLowerCase())) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: 'Unsupported category' })
+            };
+        }
+    }
     const sessionId = uuidv4();
     let questions;
     try {
@@ -228,11 +307,35 @@ async function submitAnswer(userId, requestData, headers) {
     
     const { sessionId, questionId, answer, timeTaken } = requestData;
     
-    if (!questionId || answer === undefined) {
+    if (!validateSessionId(sessionId)) {
         return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'Missing required fields' })
+            body: JSON.stringify({ error: 'Invalid session ID' })
+        };
+    }
+    
+    if (!validateQuestionId(questionId)) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid question ID' })
+        };
+    }
+    
+    if (!validateAnswer(answer)) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid answer format' })
+        };
+    }
+    
+    if (!validateTimeTaken(timeTaken)) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid time taken' })
         };
     }
     let session;
@@ -319,6 +422,13 @@ async function submitAnswer(userId, requestData, headers) {
 }
 
 async function endSession(userId, sessionId, headers) {
+    if (!validateSessionId(sessionId)) {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid session ID' })
+        };
+    }
     let session;
     try {
         session = await valkeyClient.getSession(sessionId);

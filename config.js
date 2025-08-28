@@ -1,23 +1,8 @@
-const config = {
-    production: {
-        rateLimit: 100,
-        rateLimitWindow: 60000,
-        sessionTimeout: 1800000, // 30 minutes
-        questionCacheTTL: 21600, // 6 hours
-        maxRetries: 3,
-        timeout: 5000,
-        logLevel: 'error'
-    },
-    development: {
-        rateLimit: 1000,
-        rateLimitWindow: 60000,
-        sessionTimeout: 3600000, // 1 hour
-        questionCacheTTL: 3600, // 1 hour
-        maxRetries: 1,
-        timeout: 10000,
-        logLevel: 'debug'
-    }
+module.exports = {
+    VALKEY_HOST: process.env.VALKEY_HOST || 'localhost',
+    COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID,
+    COGNITO_CLIENT_ID: process.env.COGNITO_CLIENT_ID,
+    SESSION_TTL: 3600,
+    QUESTIONS_PER_GAME: 5,
+    MAX_SCORE_PER_QUESTION: 15
 };
-
-const env = process.env.NODE_ENV || 'production';
-module.exports = config[env];
