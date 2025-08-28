@@ -38,6 +38,11 @@ jobs:
         cd cdk
         npx cdk bootstrap --require-approval never --force || echo "Bootstrap may already exist"
         
+    - name: Build CDK
+      run: |
+        cd cdk
+        npm run build
+        
     - name: Deploy CDK Stack
       run: |
         cd cdk
