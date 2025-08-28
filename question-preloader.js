@@ -33,11 +33,16 @@ class QuestionPreloader {
         console.log(`Starting weekly question preload for week: ${sanitizeLogValue(weekKey)}`);
         
         try {
-            // Check if current week questions already exist
-            const existingQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
-            if (existingQuestions && existingQuestions.length >= TARGET_QUESTIONS_PER_WEEK) {
-                console.log(`Week ${sanitizeLogValue(weekKey)} already has ${sanitizeLogValue(existingQuestions.length)} questions`);
-                return { success: true, questionsLoaded: existingQuestions.length };
+            // Check if current week questions already exist (unless force update)
+            if (!this.forceUpdate) {
+                const existingQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
+                if (existingQuestions && existingQuestions.length >= TARGET_QUESTIONS_PER_WEEK) {
+                    console.log(`Week ${sanitizeLogValue(weekKey)} already has ${sanitizeLogValue(existingQuestions.length)} questions`);
+                    return { success: true, questionsLoaded: existingQuestions.length };
+                }
+            } else {
+                console.log(`Force update requested - clearing existing questions for week ${sanitizeLogValue(weekKey)}`);
+                await valkeyClient.deleteWeeklyQuestions(weekKey);
             }
 
             // Fetch questions (API_BATCH_COUNT API calls × 50 questions each)
@@ -226,6 +231,13 @@ const handler = async (event, context) => {
         }
         
         console.log('Question preloader Lambda triggered');
+        
+        // Check for force update flag
+        if (event && event.forceUpdate) {
+            questionPreloader.forceUpdate = true;
+            console.log('Force update mode enabled');
+        }
+        
         const result = await questionPreloader.preloadWeeklyQuestions();
         
         return {
