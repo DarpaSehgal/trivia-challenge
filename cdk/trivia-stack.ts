@@ -81,6 +81,7 @@ export class TriviaStack extends cdk.Stack {
         userSrp: true,
       },
       generateSecret: false,
+      preventUserExistenceErrors: true,
     });
 
     // Lambda Functions
