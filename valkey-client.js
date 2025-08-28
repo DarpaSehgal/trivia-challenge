@@ -39,19 +39,40 @@ class ValkeyClient {
         return this.client;
     }
 
-    getQuestionsKey(category) {
-        const sanitizedCategory = this.sanitizeCategory(category);
-        return `valkey:questions:${sanitizedCategory}`;
-    }
 
-    async cacheQuestions(category, questions) {
+
+
+
+    async storeWeeklyQuestions(weekKey, questions) {
         try {
             const client = await this.connect();
-            const key = this.getQuestionsKey(category);
-            await this.withTimeout(client.setex(key, 604800, JSON.stringify(questions)), 2000);
+            const key = `valkey:weekly_questions:${weekKey}`;
+            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(questions)), 5000); // 2 weeks TTL
         } catch (error) {
-            console.error('Cache questions failed:', this.sanitizeLogMessage(error.message));
-            // Don't throw - graceful degradation
+            console.error('Store weekly questions failed:', this.sanitizeLogMessage(error.message));
+            throw error;
+        }
+    }
+
+    async getWeeklyQuestions(weekKey) {
+        try {
+            const client = await this.connect();
+            const key = `valkey:weekly_questions:${weekKey}`;
+            const cached = await this.withTimeout(client.get(key), 2000);
+            return cached ? this.parseJsonSafely(cached) : null;
+        } catch (error) {
+            console.error('Get weekly questions failed:', this.sanitizeLogMessage(error.message));
+            return null;
+        }
+    }
+
+    async deleteWeeklyQuestions(weekKey) {
+        try {
+            const client = await this.connect();
+            const key = `valkey:weekly_questions:${weekKey}`;
+            await this.withTimeout(client.del(key), 2000);
+        } catch (error) {
+            console.error('Delete weekly questions failed:', this.sanitizeLogMessage(error.message));
         }
     }
 
@@ -62,18 +83,7 @@ class ValkeyClient {
         ]);
     }
 
-    async getQuestions(category) {
-        try {
-            const client = await this.connect();
-            const key = this.getQuestionsKey(category);
-            const cached = await this.withTimeout(client.get(key), 2000);
-            const result = cached ? this.parseJsonSafely(cached) : null;
-            return result ? this.sanitizeQuestionData(result) : null;
-        } catch (error) {
-            console.error('Get questions failed:', this.sanitizeLogMessage(error.message));
-            return null;
-        }
-    }
+
 
     async addSeenQuestion(userId, questionId) {
         try {

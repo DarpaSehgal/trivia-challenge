@@ -1,5 +1,6 @@
 const axios = require('axios');
 const valkeyClient = require('./valkey-client');
+const { cleanupLegacyCache } = require('./cleanup-legacy-cache');
 
 function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
@@ -13,60 +14,62 @@ class QuestionService {
 
     async fetchAndCacheQuestions(category = 'general') {
         try {
-            // Check cache first with timeout
-            let questions = await Promise.race([
-                valkeyClient.getQuestions(category),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Valkey timeout')), 2000))
-            ]);
-            
-            if (questions && questions.length >= 50) {
-                return questions;
-            }
-        } catch (error) {
-            console.error('Valkey cache check failed:', error);
-        }
-
-        try {
-            // Rate limiting: ensure minimum interval between API calls
-            const now = Date.now();
-            const timeSinceLastCall = now - this.lastApiCall;
-            if (timeSinceLastCall < this.minInterval) {
-                await new Promise(resolve => setTimeout(resolve, this.minInterval - timeSinceLastCall));
-            }
-            this.lastApiCall = Date.now();
-
-            // Fetch from OpenTDB API with timeout
-            const response = await axios.get('https://opentdb.com/api.php', {
-                params: {
-                    amount: 50,
-                    category: this.getCategoryId(category),
-                    type: 'multiple'
-                },
-                timeout: 3000
-            });
-
-            if (response.data.response_code === 0) {
-                const questions = response.data.results.map((q, index) => ({
-                    id: `${category}_${index}_${Date.now()}`,
-                    question: q.question,
-                    correct_answer: q.correct_answer,
-                    incorrect_answers: q.incorrect_answers,
-                    category: q.category,
-                    difficulty: q.difficulty
-                }));
-
-                // Try to cache with timeout, don't wait if it fails
-                valkeyClient.cacheQuestions(category, questions).catch(err => 
-                    console.error('Failed to cache questions:', err)
-                );
-                return questions;
+            // One-time cleanup of legacy cache (safe to call multiple times)
+            if (!this.cleanupDone) {
+                cleanupLegacyCache().catch(err => console.error('Cleanup error:', err));
+                this.cleanupDone = true;
             }
             
-            throw new Error('Failed to fetch questions from OpenTDB');
+            // First check weekly questions cache
+            const weekKey = this.getWeekKey();
+            let weeklyQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
+            
+            if (weeklyQuestions && weeklyQuestions.length >= 100) {
+                return weeklyQuestions;
+            }
+            
+            // Fallback to previous week if current week not ready
+            const previousWeekKey = this.getPreviousWeekKey(weekKey);
+            weeklyQuestions = await valkeyClient.getWeeklyQuestions(previousWeekKey);
+            
+            if (weeklyQuestions && weeklyQuestions.length >= 100) {
+                console.log(`Using previous week questions: ${previousWeekKey}`);
+                return weeklyQuestions;
+            }
+            
         } catch (error) {
-            console.error('Error fetching questions:', error);
-            return this.getMockQuestions();
+            console.error('Weekly cache check failed:', error);
         }
+
+        // Fallback: return mock questions
+        console.log('No cached questions available, using mock questions');
+        return this.getMockQuestions();
+    }
+
+    getWeekKey() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const week = this.getWeekNumber(now);
+        return `${year}-W${week.toString().padStart(2, '0')}`;
+    }
+
+    getPreviousWeekKey(currentWeekKey) {
+        const [year, weekStr] = currentWeekKey.split('-W');
+        const week = parseInt(weekStr);
+        
+        if (week === 1) {
+            return `${parseInt(year) - 1}-W52`;
+        } else {
+            return `${year}-W${(week - 1).toString().padStart(2, '0')}`;
+        }
+    }
+
+    getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     }
 
     async getGameQuestions(userId, category = 'general') {
@@ -102,12 +105,507 @@ class QuestionService {
     
     getMockQuestions() {
         return [
-            { id: 'mock-1', question: 'What is the capital of France?', correct_answer: 'Paris', incorrect_answers: ['London', 'Berlin', 'Madrid'] },
-            { id: 'mock-2', question: 'Which planet is closest to the Sun?', correct_answer: 'Mercury', incorrect_answers: ['Venus', 'Earth', 'Mars'] },
-            { id: 'mock-3', question: 'What is 2 + 2?', correct_answer: '4', incorrect_answers: ['3', '5', '6'] },
-            { id: 'mock-4', question: 'Who painted the Mona Lisa?', correct_answer: 'Da Vinci', incorrect_answers: ['Van Gogh', 'Picasso', 'Monet'] },
-            { id: 'mock-5', question: 'What is the largest ocean?', correct_answer: 'Pacific', incorrect_answers: ['Atlantic', 'Indian', 'Arctic'] }
-        ];
+          {
+                    "id": "mock-1",
+                    "question": "In &quot;A Hat in Time&quot;, what must Hat Kid collect to finish a level",
+                    "correct_answer": "A time piece",
+                    "incorrect_answers": [
+                              "A heart fragment",
+                              "A relic fragment",
+                              "A hat"
+                    ]
+          },
+          {
+                    "id": "mock-2",
+                    "question": "What is the name of the virus in &quot;Metal Gear Solid 1&quot;?",
+                    "correct_answer": "FOXDIE",
+                    "incorrect_answers": [
+                              "FOXENGINE",
+                              "FOXALIVE",
+                              "FOXKILL"
+                    ]
+          },
+          {
+                    "id": "mock-3",
+                    "question": "What is the name of New Zealand&#039;s indigenous people?",
+                    "correct_answer": "Maori",
+                    "incorrect_answers": [
+                              "Vikings",
+                              "Polynesians",
+                              "Samoans"
+                    ]
+          },
+          {
+                    "id": "mock-4",
+                    "question": "What year was Super Mario Bros. released?",
+                    "correct_answer": "1985",
+                    "incorrect_answers": [
+                              "1983",
+                              "1987",
+                              "1986"
+                    ]
+          },
+          {
+                    "id": "mock-5",
+                    "question": "How many zombies need to be killed to get the &quot;Zombie Genocider&quot; achievement in Dead Rising (2006)?",
+                    "correct_answer": "53,594",
+                    "incorrect_answers": [
+                              "53,593",
+                              "53,595",
+                              "53,596"
+                    ]
+          },
+          {
+                    "id": "mock-6",
+                    "question": "Which country hosted the 2022 FIFA World Cup?",
+                    "correct_answer": "Qatar",
+                    "incorrect_answers": [
+                              "USA",
+                              "Japan",
+                              "Switzerland"
+                    ]
+          },
+          {
+                    "id": "mock-7",
+                    "question": "What was the name of the German offensive operation in October 1941 to take Moscow before winter?",
+                    "correct_answer": "Operation Typhoon",
+                    "incorrect_answers": [
+                              "Operation Sunflower",
+                              "Operation Barbarossa",
+                              "Case Blue"
+                    ]
+          },
+          {
+                    "id": "mock-8",
+                    "question": "Better known by his nickname Logan, what is Wolverine&#039;s birth name?",
+                    "correct_answer": "James Howlett",
+                    "incorrect_answers": [
+                              "Logan Wolf",
+                              "Thomas Wilde",
+                              "John Savage"
+                    ]
+          },
+          {
+                    "id": "mock-9",
+                    "question": "Which of these musicals won the Tony Award for Best Musical?",
+                    "correct_answer": "Rent",
+                    "incorrect_answers": [
+                              "The Color Purple",
+                              "American Idiot",
+                              "Newsies"
+                    ]
+          },
+          {
+                    "id": "mock-10",
+                    "question": "The fictional movie &#039;Rochelle, Rochelle&#039; features in which sitcom?",
+                    "correct_answer": "Seinfeld",
+                    "incorrect_answers": [
+                              "Frasier",
+                              "Cheers",
+                              "Friends"
+                    ]
+          },
+          {
+                    "id": "mock-11",
+                    "question": "Which of the following bands is Tom DeLonge not a part of?",
+                    "correct_answer": "+44",
+                    "incorrect_answers": [
+                              "Box Car Racer",
+                              "Blink-182",
+                              "Angels &amp; Airwaves"
+                    ]
+          },
+          {
+                    "id": "mock-12",
+                    "question": "Which band is the longest active band in the world with no breaks or line-up changes?",
+                    "correct_answer": "U2",
+                    "incorrect_answers": [
+                              "Radiohead",
+                              "Rush",
+                              "Rolling Stones"
+                    ]
+          },
+          {
+                    "id": "mock-13",
+                    "question": "Who scored the injury time winning goal in the 1999 UEFA Champions League final between Manchester United and Bayern Munich?",
+                    "correct_answer": "Ole Gunnar Solskj&aelig;r",
+                    "incorrect_answers": [
+                              "Dwight Yorke",
+                              "Andy Cole",
+                              "David Beckham"
+                    ]
+          },
+          {
+                    "id": "mock-14",
+                    "question": "&quot;Gimmick!&quot; is a Japanese Famicom game that uses a sound chip expansion in the cartridge. What is it called?",
+                    "correct_answer": "FME-7",
+                    "incorrect_answers": [
+                              "VRC7",
+                              "VRC6",
+                              "MMC5"
+                    ]
+          },
+          {
+                    "id": "mock-15",
+                    "question": "In what year was &quot;Antichamber&quot; released?",
+                    "correct_answer": "2013",
+                    "incorrect_answers": [
+                              "2012",
+                              "2014",
+                              "2011"
+                    ]
+          },
+          {
+                    "id": "mock-16",
+                    "question": "What is the capital of Chile?",
+                    "correct_answer": "Santiago",
+                    "incorrect_answers": [
+                              "Valpara&iacute;so",
+                              "Copiap&oacute;",
+                              "Antofagasta"
+                    ]
+          },
+          {
+                    "id": "mock-17",
+                    "question": "Which of the following languages is used as a scripting language in the Unity 3D game engine?",
+                    "correct_answer": "C#",
+                    "incorrect_answers": [
+                              "Java",
+                              "C++",
+                              "Objective-C"
+                    ]
+          },
+          {
+                    "id": "mock-18",
+                    "question": "In &quot;Donkey Kong Country&quot;, why does Donkey Kong want to know the secret of the crystal coconut?",
+                    "correct_answer": "He&#039;s the big kahuna.",
+                    "incorrect_answers": [
+                              "To find out where all the bananas are.",
+                              "Because Diddy Kong forced him.",
+                              "He wants to punish brutes."
+                    ]
+          },
+          {
+                    "id": "mock-19",
+                    "question": "Which car manufacturer created the &quot;Aventador&quot;?",
+                    "correct_answer": "Lamborghini",
+                    "incorrect_answers": [
+                              "Ferrari",
+                              "Pagani",
+                              "Bugatti"
+                    ]
+          },
+          {
+                    "id": "mock-20",
+                    "question": "What was the first movie to ever use a Wilhelm Scream?",
+                    "correct_answer": "Distant Drums",
+                    "incorrect_answers": [
+                              "Treasure of the Sierra Madre",
+                              "The Charge at Feather River",
+                              "Indiana Jones"
+                    ]
+          },
+          {
+                    "id": "mock-21",
+                    "question": "In the 1969 Cartoon show &quot;Dastardly and Muttley in Their Flying Machines&quot;, which were NOT one of the lyrics in the opening theme?",
+                    "correct_answer": "Stab him",
+                    "incorrect_answers": [
+                              "Nab him",
+                              "Jab him",
+                              "Tab him"
+                    ]
+          },
+          {
+                    "id": "mock-22",
+                    "question": "What is the name of the planet that the Doctor from television series &quot;Doctor Who&quot; comes from?",
+                    "correct_answer": "Gallifrey",
+                    "incorrect_answers": [
+                              "Sontar",
+                              "Skaro",
+                              "Mondas"
+                    ]
+          },
+          {
+                    "id": "mock-23",
+                    "question": "&quot;The Big Bang Theory&quot; was first theorized by a priest of what religious ideology?",
+                    "correct_answer": "Catholic",
+                    "incorrect_answers": [
+                              "Christian",
+                              "Jewish",
+                              "Islamic"
+                    ]
+          },
+          {
+                    "id": "mock-24",
+                    "question": "The Touhou Project series of games is often associated with which genre?",
+                    "correct_answer": "Shoot &#039;em up",
+                    "incorrect_answers": [
+                              "Strategy",
+                              "FPS",
+                              "Casual"
+                    ]
+          },
+          {
+                    "id": "mock-25",
+                    "question": "Where are Terror Fiends more commonly found in the Nintendo game Miitopia?",
+                    "correct_answer": "New Lumos",
+                    "incorrect_answers": [
+                              "Peculia",
+                              "The Sky Scraper",
+                              "Otherworld"
+                    ]
+          },
+          {
+                    "id": "mock-26",
+                    "question": "Which of these is not a playable character in &quot;Enter The Gungeon?&quot;",
+                    "correct_answer": "The Heavy",
+                    "incorrect_answers": [
+                              "The Bullet",
+                              "The Robot",
+                              "The Cultist"
+                    ]
+          },
+          {
+                    "id": "mock-27",
+                    "question": "Which of these two plates are best know for forming earthquakes and tsunami&#039;s? ",
+                    "correct_answer": "Convergent Plate Boundaries/Oceanic Crust",
+                    "incorrect_answers": [
+                              "Divergent Plate Boundaries/Convergent/Oceanic Crust",
+                              "Transform Plate Boundaries/Divergent Plate Boundaries",
+                              "Oceanic &amp; Continental Crust/Transform Plate Boundaries"
+                    ]
+          },
+          {
+                    "id": "mock-28",
+                    "question": "What year did Albrecht D&uuml;rer create the painting &quot;The Young Hare&quot;?",
+                    "correct_answer": "1502",
+                    "incorrect_answers": [
+                              "1702",
+                              "1402",
+                              "1602"
+                    ]
+          },
+          {
+                    "id": "mock-29",
+                    "question": "In what sport does Fanny Chmelar compete for Germany?",
+                    "correct_answer": "Skiing",
+                    "incorrect_answers": [
+                              "Swimming",
+                              "Showjumping",
+                              "Gymnastics"
+                    ]
+          },
+          {
+                    "id": "mock-30",
+                    "question": "Which mathematician refused the Fields Medal?",
+                    "correct_answer": "Grigori Perelman",
+                    "incorrect_answers": [
+                              "Andrew Wiles",
+                              "Terence Tao",
+                              "Edward Witten"
+                    ]
+          },
+          {
+                    "id": "mock-31",
+                    "question": "Which horror movie had a sequel in the form of a video game released in August 20, 2002?",
+                    "correct_answer": "The Thing",
+                    "incorrect_answers": [
+                              "The Evil Dead",
+                              "Saw",
+                              "Alien"
+                    ]
+          },
+          {
+                    "id": "mock-32",
+                    "question": "What does the &quot;MP&quot; stand for in MP3?",
+                    "correct_answer": "Moving Picture",
+                    "incorrect_answers": [
+                              "Music Player",
+                              "Multi Pass",
+                              "Micro Point"
+                    ]
+          },
+          {
+                    "id": "mock-33",
+                    "question": "Generally, which component of a computer draws the most power?",
+                    "correct_answer": "Video Card",
+                    "incorrect_answers": [
+                              "Hard Drive",
+                              "Processor",
+                              "Power Supply"
+                    ]
+          },
+          {
+                    "id": "mock-34",
+                    "question": "In the first Left 4 Dead, you can play as either of these four characters.",
+                    "correct_answer": "Francis, Bill, Zoey, and Louis",
+                    "incorrect_answers": [
+                              "Bender, Andrew, Allison, and Brian",
+                              "Coach, Ellis, Nick, and Rochelle",
+                              "Harry, Ron, Hermione and Dumbledore"
+                    ]
+          },
+          {
+                    "id": "mock-35",
+                    "question": "Which gas forms about 78% of the Earth&rsquo;s atmosphere?",
+                    "correct_answer": "Nitrogen",
+                    "incorrect_answers": [
+                              "Oxygen",
+                              "Argon",
+                              "Carbon Dioxide"
+                    ]
+          },
+          {
+                    "id": "mock-36",
+                    "question": "How many members are there in the band Nirvana?",
+                    "correct_answer": "Three",
+                    "incorrect_answers": [
+                              "Two",
+                              "Four",
+                              "Five"
+                    ]
+          },
+          {
+                    "id": "mock-37",
+                    "question": "Which wrestler won the 2019 Men&rsquo;s Royal Rumble?",
+                    "correct_answer": "Seth Rollins",
+                    "incorrect_answers": [
+                              "Braun Strowman",
+                              "AJ Styles",
+                              "Andrade"
+                    ]
+          },
+          {
+                    "id": "mock-38",
+                    "question": "The character Plum from &quot;No Game No Life&quot; is of what race?",
+                    "correct_answer": "Dhampir",
+                    "incorrect_answers": [
+                              "Fl&uuml;gel",
+                              "Imanity",
+                              "Seiren"
+                    ]
+          },
+          {
+                    "id": "mock-39",
+                    "question": "Under which name was Rodrigo Borgia made Pope?",
+                    "correct_answer": "Alexander VI",
+                    "incorrect_answers": [
+                              "Rodrigo I",
+                              "John Paul II",
+                              "Pius VII"
+                    ]
+          },
+          {
+                    "id": "mock-40",
+                    "question": "In what year was &quot;Super Mario Sunshine&quot; released?",
+                    "correct_answer": "2002",
+                    "incorrect_answers": [
+                              "2003",
+                              "2000",
+                              "2004"
+                    ]
+          },
+          {
+                    "id": "mock-41",
+                    "question": "What game mode was not in the original &quot;Wii Sports&quot;?",
+                    "correct_answer": "Table Tennis",
+                    "incorrect_answers": [
+                              "Boxing",
+                              "Baseball",
+                              "Bowling"
+                    ]
+          },
+          {
+                    "id": "mock-42",
+                    "question": "In &quot;PAYDAY 2&quot;, what weapon has the highest base weapon damage on a per-shot basis?",
+                    "correct_answer": "HRL-7",
+                    "incorrect_answers": [
+                              "Heavy Crossbow",
+                              "Thanatos .50 cal",
+                              "Broomstick Pistol"
+                    ]
+          },
+          {
+                    "id": "mock-43",
+                    "question": "What is the highest belt you can get in Taekwondo?",
+                    "correct_answer": "Black",
+                    "incorrect_answers": [
+                              "White",
+                              "Red",
+                              "Green"
+                    ]
+          },
+          {
+                    "id": "mock-44",
+                    "question": "What is the name of the child performing the Black Sacrament, in The Elder Scrolls V: Skyrim?",
+                    "correct_answer": "Aventus Aretino",
+                    "incorrect_answers": [
+                              "Proventus Avenicci",
+                              "Aval Atheron",
+                              "Arngeir"
+                    ]
+          },
+          {
+                    "id": "mock-45",
+                    "question": "Which of these online games was originally named LindenWorld in it&#039;s early development?",
+                    "correct_answer": "SecondLife",
+                    "incorrect_answers": [
+                              "ActiveWorlds",
+                              "IMVU",
+                              "HabboHotel"
+                    ]
+          },
+          {
+                    "id": "mock-46",
+                    "question": "When did the British hand-over sovereignty of Hong Kong back to China?",
+                    "correct_answer": "1997",
+                    "incorrect_answers": [
+                              "1999",
+                              "1841",
+                              "1900"
+                    ]
+          },
+          {
+                    "id": "mock-47",
+                    "question": "What is the area of a circle with a diameter of 20 inches if &pi;= 3.1415?",
+                    "correct_answer": "314.15 Inches",
+                    "incorrect_answers": [
+                              "380.1215 Inches",
+                              "3141.5 Inches",
+                              "1256.6 Inches"
+                    ]
+          },
+          {
+                    "id": "mock-48",
+                    "question": "What is a fundamental element of the Gothic style of architecture?",
+                    "correct_answer": "pointed arch",
+                    "incorrect_answers": [
+                              "coffered ceilings",
+                              "fa&ccedil;ades surmounted by a pediment ",
+                              "internal frescoes"
+                    ]
+          },
+          {
+                    "id": "mock-49",
+                    "question": "In what year was the last natural case of smallpox documented?",
+                    "correct_answer": "1977",
+                    "incorrect_answers": [
+                              "1982",
+                              "1980",
+                              "1990"
+                    ]
+          },
+          {
+                    "id": "mock-50",
+                    "question": "When did Norway become free from Sweden?",
+                    "correct_answer": "1905",
+                    "incorrect_answers": [
+                              "1925",
+                              "1814",
+                              "1834"
+                    ]
+          }
+];
     }
 
     getCategoryId(category) {

@@ -8,6 +8,8 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as elasticache from 'aws-cdk-lib/aws-elasticache';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 
 export class TriviaStack extends cdk.Stack {
@@ -114,7 +116,7 @@ export class TriviaStack extends cdk.Stack {
 
     const preloaderFunction = new lambda.Function(this, 'PreloaderFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
+      handler: 'preloader-lambda.handler',
       code: lambda.Code.fromInline(`
         exports.handler = async (event) => {
           return {
@@ -126,7 +128,8 @@ export class TriviaStack extends cdk.Stack {
       `),
       vpc,
       securityGroups: [lambdaSG],
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.minutes(15), // 15 minutes for 10 API calls
+      memorySize: 256,
       environment: {
         VALKEY_HOST: valkeyCache.attrEndpointAddress,
       },
@@ -148,6 +151,14 @@ export class TriviaStack extends cdk.Stack {
       actions: ['elasticache:*'],
       resources: ['*'],
     }));
+
+    // EventBridge rule for weekly schedule (every Monday at 2 AM UTC)
+    const weeklyRule = new events.Rule(this, 'WeeklyQuestionRefresh', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '2', weekDay: 'MON' }),
+      description: 'Trigger weekly question preload every Monday at 2 AM UTC',
+    });
+
+    weeklyRule.addTarget(new targets.LambdaFunction(preloaderFunction));
 
     // API Gateway
     const api = new apigateway.RestApi(this, 'TriviaApi', {
