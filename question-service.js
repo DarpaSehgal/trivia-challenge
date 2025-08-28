@@ -5,27 +5,27 @@ const { cleanupLegacyCache } = require('./cleanup-legacy-cache');
 // Sanitizes log values by removing control characters and truncating length
 // to prevent log injection attacks and improve readability
 function sanitizeLogValue(value) {
-    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+    return String(value || '').replace(/[\r\n\t<>"'&]/g, ' ').slice(0, 200);
 }
 
 class QuestionService {
     constructor() {
         this.lastApiCall = 0;
-        this.minInterval = 1500; // 1.5 seconds between API calls (40 calls/minute max)
-        this.lastCleanupDate = null;
+        this.minInterval = 1500;
     }
 
     async fetchAndCacheQuestions(category = 'general') {
         try {
-            // One-time cleanup of legacy cache per day
-            const today = new Date().toDateString();
-            if (this.lastCleanupDate !== today) {
-                try {
-                await cleanupLegacyCache();
+            // Check if cleanup needed via cache
+            const cleanupKey = `cleanup:${new Date().toISOString().split('T')[0]}`;
+            try {
+                const cleanupDone = await valkeyClient.client?.get(cleanupKey);
+                if (!cleanupDone) {
+                    await cleanupLegacyCache();
+                    await valkeyClient.client?.setex(cleanupKey, 86400, 'done');
+                }
             } catch (err) {
                 console.error('Cleanup error:', sanitizeLogValue(err.message));
-            }
-                this.lastCleanupDate = today;
             }
             
             // First check weekly questions cache

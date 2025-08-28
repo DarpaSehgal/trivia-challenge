@@ -8,7 +8,7 @@ class ValkeyClient {
     }
 
     async connect() {
-        if (!this.client || !this.isConnected) {
+        if (!this.client) {
             this.client = new Redis({
                 host: process.env.VALKEY_HOST,
                 port: 6379,
@@ -46,9 +46,13 @@ class ValkeyClient {
 
     async storeWeeklyQuestions(weekKey, questions) {
         try {
+            if (!Array.isArray(questions) || questions.length > 1000) {
+                throw new Error('Invalid questions data');
+            }
             const client = await this.connect();
-            const key = `valkey:weekly_questions:${weekKey}`;
-            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(questions)), 2000); // 2 weeks TTL
+            const sanitizedKey = String(weekKey).replace(/[^a-zA-Z0-9_-]/g, '');
+            const key = `valkey:weekly_questions:${sanitizedKey}`;
+            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(questions)), 2000);
         } catch (error) {
             console.error('Store weekly questions failed:', this.sanitizeLogMessage(error.message));
             throw error;
@@ -242,7 +246,7 @@ class ValkeyClient {
             return exists === 0;
         } catch (error) {
             console.error('Check username failed:', this.sanitizeLogMessage(error.message));
-            return true;
+            return false;
         }
     }
 
@@ -273,7 +277,7 @@ class ValkeyClient {
 
     sanitizeUserId(userId) {
         if (!userId) return '';
-        return String(userId).replace(/[^a-zA-Z0-9@._-]/g, '').substring(0, 100);
+        return String(userId).replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 100);
     }
 
     sanitizeSessionId(sessionId) {
@@ -296,10 +300,10 @@ class ValkeyClient {
         if (!question || typeof question !== 'object') return question;
         return {
             ...question,
-            question: this.escapeHtml(String(question.question || '')),
-            correct_answer: this.escapeHtml(String(question.correct_answer || '')),
+            question: this.sanitizeLogMessage(String(question.question || '')),
+            correct_answer: this.sanitizeLogMessage(String(question.correct_answer || '')),
             incorrect_answers: Array.isArray(question.incorrect_answers) 
-                ? question.incorrect_answers.map(a => this.escapeHtml(String(a)))
+                ? question.incorrect_answers.map(a => this.sanitizeLogMessage(String(a)))
                 : []
         };
     }
@@ -312,7 +316,7 @@ class ValkeyClient {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#x27;')
-            .replace(/\//g, '&#x2F;');
+            .replace(/'/g, '&#x27;');
     }
 
     sanitizeUsername(username) {

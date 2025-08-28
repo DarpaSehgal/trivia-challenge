@@ -2,7 +2,7 @@ const axios = require('axios');
 const valkeyClient = require('./valkey-client');
 
 function sanitizeLogValue(value) {
-    return String(value || '').replace(/[\r\n\t]/g, ' ').substring(0, 200);
+    return String(value || '').replace(/[\r\n\t<>"'&]/g, ' ').slice(0, 200);
 }
 
 const TARGET_QUESTIONS_PER_WEEK = 500;
@@ -28,9 +28,7 @@ class QuestionPreloader {
 
             // Fetch questions (API_BATCH_COUNT API calls × 50 questions each)
             const allQuestions = [];
-            const totalCalls = API_BATCH_COUNT;
-            
-            for (let i = 0; i < totalCalls; i++) {
+            for (let i = 0; i < API_BATCH_COUNT; i++) {
                 try {
                     console.log(`Fetching batch ${i + 1}/${totalCalls}...`);
                     
@@ -39,11 +37,10 @@ class QuestionPreloader {
                     
                     if (questions && questions.length > 0) {
                         allQuestions.push(...questions);
-                        console.log(`Batch ${i + 1}: Got ${sanitizeLogValue(questions.length)} questions from mixed categories`);
+                        console.log(`Batch ${i + 1}/${API_BATCH_COUNT}: Got ${sanitizeLogValue(questions.length)} questions from mixed categories`);
                     }
                     
-                    // Wait 5.1 seconds before next API call (except last call)
-                    if (i < totalCalls - 1) {
+                    if (i < API_BATCH_COUNT - 1) {
                         await this.sleep(this.apiDelay);
                     }
                     
@@ -87,7 +84,7 @@ class QuestionPreloader {
             const responseCode = response.data.response_code;
             if (responseCode === 0) {
                 return response.data.results.map((q, index) => ({
-                    id: `mixed_${Date.now()}_${index}`,
+                    id: `mixed_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
                     question: q.question,
                     correct_answer: q.correct_answer,
                     incorrect_answers: q.incorrect_answers,
@@ -141,10 +138,18 @@ class QuestionPreloader {
         const week = parseInt(weekStr);
         
         if (week === 1) {
-            return `${parseInt(year) - 1}-W52`;
+            const prevYear = parseInt(year) - 1;
+            const weeksInPrevYear = this.getWeeksInYear(prevYear);
+            return `${prevYear}-W${weeksInPrevYear.toString().padStart(2, '0')}`;
         } else {
             return `${year}-W${(week - 1).toString().padStart(2, '0')}`;
         }
+    }
+    
+    getWeeksInYear(year) {
+        const jan1 = new Date(year, 0, 1);
+        const dec31 = new Date(year, 11, 31);
+        return jan1.getDay() === 4 || dec31.getDay() === 4 ? 53 : 52;
     }
 
     getWeekNumber(date) {

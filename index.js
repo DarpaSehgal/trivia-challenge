@@ -42,7 +42,12 @@ exports.handler = async (event) => {
             }
             body = parseResult.data;
         }
-        const userId = extractUserId(event);
+        let userId;
+        try {
+            userId = extractUserId(event);
+        } catch (error) {
+            userId = null;
+        }
         
         // Rate limiting
         if (!rateLimiter.checkRateLimit(userId)) {
@@ -162,7 +167,13 @@ async function checkUsernameUniqueness(username, headers) {
 
 async function startGame(userId, category = 'general', headers) {
     const sessionId = uuidv4();
-    const questions = await questionService.getGameQuestions(userId, category);
+    let questions;
+    try {
+        questions = await questionService.getGameQuestions(userId, category);
+    } catch (error) {
+        console.error('Failed to get questions:', sanitizeLogValue(error.message));
+        throw new Error('Question service unavailable');
+    }
     
     // Mark questions as seen (batch operation)
     try {
@@ -267,8 +278,7 @@ async function submitAnswer(userId, requestData, headers) {
     
     let questionScore = 0;
     if (isCorrect) {
-        // Validate time taken - use penalty time for invalid inputs to prevent gaming
-        const validTimeTaken = (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 60) ? timeTaken : 30;
+        const validTimeTaken = validateTimeTaken(timeTaken);
         questionScore = 10 + Math.max(0, 5 - validTimeTaken);
         session.score += questionScore;
     }
@@ -396,7 +406,7 @@ async function handleHealthCheck(headers) {
             headers,
             body: JSON.stringify({
                 status: 'unhealthy',
-                error: error.message,
+                error: sanitizeLogValue(error.message),
                 timestamp: new Date().toISOString()
             })
         };
@@ -406,6 +416,10 @@ async function handleHealthCheck(headers) {
 function deriveUsername(session, userId) {
     if (!userId || typeof userId !== 'string') return 'anonymous';
     return session.username || (userId.includes('@') ? userId.split('@')[0] : userId) || 'anonymous';
+}
+
+function validateTimeTaken(timeTaken) {
+    return (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 60) ? timeTaken : 30;
 }
 
 function shuffleOptions(options) {
