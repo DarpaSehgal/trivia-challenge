@@ -70,6 +70,21 @@ jobs:
         echo "🎉 CDK Application deployed successfully!"
         echo "🌐 URL: $CLOUDFRONT_URL"
         
+    - name: Invalidate CloudFront
+      run: |
+        DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+          --stack-name TriviaChallenge \
+          --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+          --output text)
+        
+        if [ ! -z "$DISTRIBUTION_ID" ]; then
+          echo "🔄 Invalidating CloudFront cache..."
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
+          echo "✅ CloudFront invalidation created"
+        fi
+        
     - name: Health Check
       run: |
         echo "⏳ Waiting for deployment to be ready..."
