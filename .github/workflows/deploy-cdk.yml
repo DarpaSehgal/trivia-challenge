@@ -3,7 +3,7 @@ name: Deploy CDK Trivia App
 on:
   push:
     branches: [ main ]
-    paths: [ 'cdk/**', 'index.js', 'valkey-client.js', 'question-service.js', 'frontend/**' ]
+    paths: [ 'cdk/**', 'index.js', 'valkey-client.js', 'question-service.js', 'question-preloader.js', 'frontend/**' ]
   workflow_dispatch:
 
 jobs:
