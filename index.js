@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const validator = require('validator');
 const { requireAuth, extractUserId } = require('./auth-middleware');
 const valkeyClient = require('./valkey-client');
 const questionService = require('./question-service');
@@ -7,6 +8,8 @@ const { healthCheck } = require('./health-check');
 const config = require('./config');
 const { validateUsername, validateSessionData, parseJsonSafely, sanitizeString } = require('./input-validator');
 const rateLimiter = require('./rate-limiter');
+
+const RESERVED_USERNAMES = ['admin', 'root', 'system', 'test', 'guest', 'anonymous', 'null', 'undefined'];
 
 function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 200);
@@ -208,12 +211,11 @@ async function checkUsernameUniqueness(username, headers) {
         };
     } catch (error) {
         console.error('Username check failed:', error);
-        // Fallback validation
-        const isReserved = RESERVED_USERNAMES.includes(validation.sanitized.toLowerCase());
+        // Fallback validation - assume unavailable on error for security
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ available: !isReserved })
+            body: JSON.stringify({ available: false, error: 'Username availability check failed' })
         };
     }
 }

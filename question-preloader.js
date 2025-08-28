@@ -1,6 +1,7 @@
 const axios = require('axios');
 const valkeyClient = require('./valkey-client');
 const { v4: uuidv4 } = require('uuid');
+const validator = require('validator');
 
 function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').slice(0, 200);
@@ -14,7 +15,8 @@ function validateInput(input, type, maxLength = 100) {
     if (str.length > maxLength) {
         throw new Error(`${type} exceeds maximum length of ${maxLength}`);
     }
-    return str;
+    // Sanitize HTML entities and dangerous characters
+    return validator.escape(str);
 }
 
 const TARGET_QUESTIONS_PER_WEEK = 500;
@@ -94,6 +96,7 @@ class QuestionPreloader {
                 headers: {
                     'User-Agent': 'AWS-Lambda-Trivia-App/1.0'
                 },
+                maxRedirects: 0,
                 validateStatus: (status) => status === 200
             });
 
@@ -107,23 +110,31 @@ class QuestionPreloader {
                     throw new Error('Invalid results format');
                 }
                 
-                return response.data.results.map((q, index) => {
-                    // Validate and sanitize question data
-                    if (!q || typeof q !== 'object') {
-                        throw new Error('Invalid question object');
+                const validQuestions = [];
+                for (const q of response.data.results) {
+                    try {
+                        // Validate and sanitize question data
+                        if (!q || typeof q !== 'object') {
+                            continue;
+                        }
+                        
+                        const sanitizedQuestion = {
+                            id: uuidv4(),
+                            question: validateInput(q.question, 'question', 500),
+                            correct_answer: validateInput(q.correct_answer, 'correct_answer', 200),
+                            incorrect_answers: Array.isArray(q.incorrect_answers) 
+                                ? q.incorrect_answers.map(a => validateInput(a, 'incorrect_answer', 200))
+                                : [],
+                            category: validateInput(q.category || 'General', 'category', 100),
+                            difficulty: ['easy', 'medium', 'hard'].includes(q.difficulty) ? q.difficulty : 'medium'
+                        };
+                        
+                        validQuestions.push(sanitizedQuestion);
+                    } catch (validationError) {
+                        console.warn(`Skipping invalid question: ${sanitizeLogValue(validationError.message)}`);
                     }
-                    
-                    return {
-                        id: uuidv4(), // Use secure UUID instead of predictable ID
-                        question: validateInput(q.question, 'question', 500),
-                        correct_answer: validateInput(q.correct_answer, 'correct_answer', 200),
-                        incorrect_answers: Array.isArray(q.incorrect_answers) 
-                            ? q.incorrect_answers.map(a => validateInput(a, 'incorrect_answer', 200))
-                            : [],
-                        category: validateInput(q.category || 'General', 'category', 100),
-                        difficulty: validateInput(q.difficulty || 'medium', 'difficulty', 20)
-                    };
-                });
+                }
+                return validQuestions;
             } else if (responseCode === 5) {
                 throw new Error('Rate limit exceeded');
             } else if (responseCode === 1) {
@@ -204,7 +215,15 @@ const questionPreloader = new QuestionPreloader();
 
 // Lambda handler function
 const handler = async (event, context) => {
+    // Set timeout buffer
+    const timeoutBuffer = 30000;
+    const maxExecutionTime = context.getRemainingTimeInMillis() - timeoutBuffer;
+    
     try {
+        if (maxExecutionTime < 60000) {
+            throw new Error('Insufficient execution time remaining');
+        }
+        
         console.log('Question preloader Lambda triggered');
         const result = await questionPreloader.preloadWeeklyQuestions();
         
@@ -214,12 +233,11 @@ const handler = async (event, context) => {
                 success: result.success,
                 questionsLoaded: result.questionsLoaded || 0,
                 weekKey: result.weekKey,
-                error: result.error,
                 timestamp: new Date().toISOString()
             })
         };
     } catch (error) {
-        const sanitizedError = String(error.message || 'Unknown error').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').substring(0, 200);
+        const sanitizedError = sanitizeLogValue(error.message || 'Unknown error');
         console.error('Handler error:', sanitizedError);
         return {
             statusCode: 500,
