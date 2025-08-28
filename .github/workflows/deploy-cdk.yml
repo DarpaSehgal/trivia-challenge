@@ -46,7 +46,7 @@ jobs:
     - name: Deploy CDK Stack
       run: |
         cd cdk
-        npx cdk deploy --require-approval never --force
+        npx cdk deploy --app "node app.js" --require-approval never --force
         
     - name: Get Application URL
       run: |
