@@ -1,4 +1,4 @@
-const redis = require('redis');
+const Redis = require('ioredis');
 
 class ValkeyClient {
     constructor() {
@@ -8,15 +8,13 @@ class ValkeyClient {
 
     async connect() {
         if (!this.client || !this.isConnected) {
-            this.client = redis.createClient({
-                socket: {
-                    host: process.env.VALKEY_HOST,
-                    port: 6379,
-                    connectTimeout: 3000,
-                    commandTimeout: 2000,
-                    tls: true,
-                    rejectUnauthorized: false
-                }
+            this.client = new Redis({
+                host: process.env.VALKEY_HOST,
+                port: 6379,
+                connectTimeout: 3000,
+                commandTimeout: 2000,
+                tls: {},
+                lazyConnect: true
             });
             
             this.client.on('error', (err) => {
@@ -29,10 +27,7 @@ class ValkeyClient {
             });
             
             try {
-                await Promise.race([
-                    this.client.connect(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 3000))
-                ]);
+                await this.client.connect();
                 this.isConnected = true;
             } catch (error) {
                 console.error('Valkey connection failed:', error);
@@ -53,7 +48,7 @@ class ValkeyClient {
         try {
             const client = await this.connect();
             const key = this.getQuestionsKey(category);
-            await this.withTimeout(client.setEx(key, 604800, JSON.stringify(questions)), 2000);
+            await this.withTimeout(client.setex(key, 604800, JSON.stringify(questions)), 2000);
         } catch (error) {
             console.error('Cache questions failed:', this.sanitizeLogMessage(error.message));
             // Don't throw - graceful degradation
@@ -89,7 +84,7 @@ class ValkeyClient {
             
             // Use pipeline for atomic operation
             const pipeline = client.multi();
-            pipeline.sAdd(key, sanitizedQuestionId);
+            pipeline.sadd(key, sanitizedQuestionId);
             pipeline.expire(key, 604800);
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
@@ -106,7 +101,7 @@ class ValkeyClient {
             
             // Batch operation using pipeline
             const pipeline = client.multi();
-            pipeline.sAdd(key, ...sanitizedQuestionIds);
+            pipeline.sadd(key, ...sanitizedQuestionIds);
             pipeline.expire(key, 604800);
             await this.withTimeout(pipeline.exec(), 2000);
         } catch (error) {
@@ -119,7 +114,7 @@ class ValkeyClient {
             const client = await this.connect();
             const sanitizedUserId = this.sanitizeUserId(userId);
             const key = `valkey:user:${sanitizedUserId}:seen_questions`;
-            return await this.withTimeout(client.sMembers(key), 2000);
+            return await this.withTimeout(client.smembers(key), 2000);
         } catch (error) {
             console.error('Get seen questions failed:', error);
             return [];
@@ -146,7 +141,7 @@ class ValkeyClient {
             const client = await this.connect();
             const sanitizedSessionId = this.sanitizeSessionId(sessionId);
             const key = `valkey:session:${sanitizedSessionId}`;
-            await this.withTimeout(client.setEx(key, ttl, JSON.stringify(data)), 2000);
+            await this.withTimeout(client.setex(key, ttl, JSON.stringify(data)), 2000);
         } catch (error) {
             console.error('Set session failed:', this.sanitizeLogMessage(error.message));
         }
@@ -179,7 +174,7 @@ class ValkeyClient {
             const week = this.getWeekNumber(now);
             const key = `valkey:leaderboard:${year}-${week}`;
             
-            await this.withTimeout(client.zAdd(key, { score, value: `${userId}:${username}` }), 2000);
+            await this.withTimeout(client.zadd(key, score, `${userId}:${username}`), 2000);
             await this.withTimeout(client.expire(key, 1209600), 2000);
         } catch (error) {
             console.error('Add to leaderboard failed:', error);
@@ -194,11 +189,13 @@ class ValkeyClient {
             const week = this.getWeekNumber(now);
             const key = `valkey:leaderboard:${year}-${week}`;
             
-            const results = await this.withTimeout(client.zRangeWithScores(key, 0, 9, { REV: true }), 2000);
-            return results.map(item => {
-                const [userId, username] = item.value.split(':');
-                return { userId, username, score: item.score };
-            });
+            const results = await this.withTimeout(client.zrevrange(key, 0, 9, 'WITHSCORES'), 2000);
+            const leaderboard = [];
+            for (let i = 0; i < results.length; i += 2) {
+                const [userId, username] = results[i].split(':');
+                leaderboard.push({ userId, username, score: parseInt(results[i + 1]) });
+            }
+            return leaderboard;
         } catch (error) {
             console.error('Get leaderboard failed:', error);
             return [];
