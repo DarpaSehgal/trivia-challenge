@@ -70,11 +70,23 @@ jobs:
         echo "🎉 CDK Application deployed successfully!"
         echo "🌐 URL: $CLOUDFRONT_URL"
         
+    - name: Deploy Frontend to S3
+      run: |
+        BUCKET_NAME=$(aws cloudformation describe-stacks \
+          --stack-name TriviaChallenge \
+          --query 'Stacks[0].Resources[?LogicalResourceId==`FrontendBucket`].PhysicalResourceId' \
+          --output text)
+        
+        if [ ! -z "$BUCKET_NAME" ]; then
+          echo "📁 Uploading frontend files to S3..."
+          aws s3 sync frontend/ s3://$BUCKET_NAME/ --delete
+          echo "✅ Frontend deployed to S3"
+        fi
+        
     - name: Invalidate CloudFront
       run: |
-        DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-          --stack-name TriviaChallenge \
-          --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+        DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+          --query "DistributionList.Items[?DomainName=='dgmr7ogtsmuu9.cloudfront.net'].Id" \
           --output text)
         
         if [ ! -z "$DISTRIBUTION_ID" ]; then
