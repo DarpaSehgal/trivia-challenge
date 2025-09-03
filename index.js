@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const validator = require('validator');
+const jwt = require('jsonwebtoken');
 // Force deployment trigger - retry
 const { requireAuth, extractUserId } = require('./auth-middleware');
 const valkeyClient = require('./valkey-client');
