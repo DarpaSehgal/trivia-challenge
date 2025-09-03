@@ -454,19 +454,23 @@ async function endSession(userId, sessionId, headers, event) {
         };
     }
     
-    // Get username from JWT token or derive from session
-    let username;
+    // Get username from JWT token
+    let username = 'Player';
     try {
         const authHeader = event?.headers?.Authorization || event?.headers?.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.substring(7);
             const decoded = jwt.decode(token);
-            username = decoded?.preferred_username || decoded?.email?.split('@')[0] || 'Player';
-        } else {
-            username = deriveUsername(session, userId);
+            // Try multiple fields to get the username
+            username = decoded?.preferred_username || 
+                      decoded?.['cognito:username'] || 
+                      decoded?.username || 
+                      (decoded?.email ? decoded.email.split('@')[0] : null) || 
+                      'Player';
         }
     } catch (error) {
-        username = deriveUsername(session, userId);
+        console.error('Error extracting username:', sanitizeLogValue(error.message));
+        username = 'Player';
     }
     
     try {
