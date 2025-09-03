@@ -72,15 +72,17 @@ jobs:
         
     - name: Deploy Frontend to S3
       run: |
-        BUCKET_NAME=$(aws cloudformation describe-stacks \
+        BUCKET_NAME=$(aws cloudformation list-stack-resources \
           --stack-name TriviaChallenge \
-          --query 'Stacks[0].Resources[?LogicalResourceId==`FrontendBucket`].PhysicalResourceId' \
+          --query 'StackResourceSummaries[?LogicalResourceId==`FrontendBucket`].PhysicalResourceId' \
           --output text)
         
         if [ ! -z "$BUCKET_NAME" ]; then
-          echo "📁 Uploading frontend files to S3..."
+          echo "📁 Uploading frontend files to S3 bucket: $BUCKET_NAME"
           aws s3 sync frontend/ s3://$BUCKET_NAME/ --delete
           echo "✅ Frontend deployed to S3"
+        else
+          echo "❌ Could not find S3 bucket name"
         fi
         
     - name: Invalidate CloudFront
