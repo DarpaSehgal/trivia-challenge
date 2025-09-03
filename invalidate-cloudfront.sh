@@ -1,0 +1,1 @@
+aws cloudfront create-invalidation --distribution-id $(aws cloudformation describe-stacks --region us-west-2 --stack-name TriviaChallenge --query "Stacks[0].Outputs[?OutputKey==\`CloudFrontDistributionId\`].OutputValue" --output text) --paths "/*"

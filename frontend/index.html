@@ -295,7 +295,7 @@
 
         <div id="gameSection">
             <div class="score">🎆 Score: <span id="currentScore">0</span> points</div>
-            <div class="timer">⏱️ Time Remaining: <span id="timer" style="color: #ff4444;">10</span><span style="color: #ff4444;">s</span></div>
+            <div class="timer">⏱️ Time Remaining: <span id="timer" style="color: #ff4444;">15</span><span style="color: #ff4444;">s</span></div>
             
             <div class="question-card">
                 <h3 id="questionNumber">Question 1 of 5</h3>
@@ -313,8 +313,9 @@
 
         <div id="leaderboardSection">
             <h2>🏆 Weekly Leaderboard</h2>
+            <p style="color: #666; font-size: 14px; margin: -10px 0 20px 0; font-style: italic;">Showing each player's best score this week</p>
             <div id="userScore" style="display: none; margin-bottom: 20px; padding: 15px 20px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: white; border-radius: 15px; text-align: center; font-weight: bold; box-shadow: 0 5px 15px rgba(142, 68, 173, 0.3);">
-                <div style="font-size: 18px; margin-bottom: 5px;">👤 Your Score</div>
+                <div style="font-size: 18px; margin-bottom: 5px;">👤 Your Best Score</div>
                 <div style="font-size: 24px;">⭐ <span id="userScoreValue">0</span> pts</div>
                 <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">Rank: <span id="userRank">#-</span></div>
             </div>
@@ -331,7 +332,7 @@
         let currentQuestion = null;
         let startTime = null;
         let timerInterval = null;
-        let timeLeft = 10;
+        let timeLeft = 15;
         
         // Configuration loaded from environment
         const API_BASE = window.APP_CONFIG?.API_BASE || 'https://lse21lqe2c.execute-api.us-west-2.amazonaws.com/prod';
@@ -1027,7 +1028,7 @@
         function displayQuestion(question, questionNumber, totalQuestions) {
             currentQuestion = question;
             startTime = Date.now();
-            timeLeft = 10;
+            timeLeft = 15;
             
             document.getElementById('questionNumber').textContent = `Question ${questionNumber} of ${totalQuestions}`;
             document.getElementById('questionText').innerHTML = question.question;

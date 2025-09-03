@@ -399,7 +399,10 @@ async function submitAnswer(userId, requestData, headers) {
     let questionScore = 0;
     if (isCorrect) {
         const validTimeTaken = normalizeTimeTaken(timeTaken);
-        questionScore = 10 + Math.max(0, 5 - validTimeTaken);
+        // Base 10 points + speed bonus for answers within 10 seconds
+        // 1-10s: bonus points, 11-15s: only base 10 points
+        const speedBonus = validTimeTaken <= 10 ? Math.max(0, Math.floor(10 - validTimeTaken)) : 0;
+        questionScore = 10 + speedBonus;
         session.score += questionScore;
     }
     
@@ -488,10 +491,20 @@ async function endSession(userId, sessionId, headers, event) {
     try {
         // Ensure session cleanup happens regardless of leaderboard operation success
         try {
-            await Promise.all([
+            const [leaderboardResult] = await Promise.all([
                 valkeyClient.addToLeaderboard(session.score, userId, username),
                 valkeyClient.storeUsername(username, userId)
             ]);
+            
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    finalScore: session.score,
+                    newBest: leaderboardResult?.newBest || false,
+                    message: 'Session completed successfully'
+                })
+            };
         } finally {
             await valkeyClient.deleteSession(sessionId);
         }
@@ -507,15 +520,6 @@ async function endSession(userId, sessionId, headers, event) {
             })
         };
     }
-    
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            finalScore: session.score,
-            message: 'Session completed successfully'
-        })
-    };
 }
 
 async function getLeaderboard(headers) {
@@ -607,7 +611,7 @@ function deriveUsername(session, userId) {
 }
 
 function normalizeTimeTaken(timeTaken) {
-    return (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 60) ? timeTaken : 30;
+    return (typeof timeTaken === 'number' && timeTaken > 0 && timeTaken <= 15) ? timeTaken : 15;
 }
 
 function shuffleOptions(options) {

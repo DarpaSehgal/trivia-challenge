@@ -284,11 +284,21 @@ class ValkeyClient {
             const year = now.getFullYear();
             const week = this.getWeekNumber(now);
             const key = `valkey:leaderboard:${year}-${week}`;
+            const memberKey = `${sanitizedUserId}:${sanitizedUsername}`;
             
-            const pipeline = client.multi();
-            pipeline.zadd(key, sanitizedScore, `${sanitizedUserId}:${sanitizedUsername}`);
-            pipeline.expire(key, 1209600);
-            await this.withTimeout(pipeline.exec(), 2000);
+            // Get current score for this user
+            const currentScore = await this.withTimeout(client.zscore(key, memberKey), 2000);
+            
+            // Only update if new score is higher than current best score
+            if (!currentScore || sanitizedScore > parseInt(currentScore)) {
+                const pipeline = client.multi();
+                pipeline.zadd(key, sanitizedScore, memberKey);
+                pipeline.expire(key, 1209600);
+                await this.withTimeout(pipeline.exec(), 2000);
+                return { updated: true, newBest: true };
+            }
+            
+            return { updated: false, newBest: false };
         } catch (error) {
             console.error('Add to leaderboard failed:', this.sanitizeLogMessage(error.message));
             throw error;
