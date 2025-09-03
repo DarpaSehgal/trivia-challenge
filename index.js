@@ -207,14 +207,25 @@ async function checkUsernameUniqueness(username, headers) {
     }
     
     try {
-        const isAvailable = await valkeyClient.isUsernameAvailable(validation.sanitized);
+        const AWS = require('aws-sdk');
+        const cognito = new AWS.CognitoIdentityServiceProvider();
+        
+        const params = {
+            UserPoolId: process.env.COGNITO_USER_POOL_ID,
+            AttributesToGet: ['preferred_username'],
+            Filter: `preferred_username = "${validation.sanitized}"`
+        };
+        
+        const result = await cognito.listUsers(params).promise();
+        const isAvailable = result.Users.length === 0;
+        
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({ available: isAvailable })
         };
     } catch (error) {
-        console.error('Username check failed:', error);
+        console.error('Username check failed:', sanitizeLogValue(error.message));
         // Fallback validation - assume unavailable on error for security
         return {
             statusCode: 200,
