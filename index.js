@@ -53,6 +53,7 @@ function validateAnswer(answer) {
     if (answer === undefined || answer === null || typeof answer !== 'string') {
         return false;
     }
+    // Allow empty string for timeouts
     return answer.length <= 500 && !/[<>"'&\$\{\$\(]/.test(answer);
 }
 
