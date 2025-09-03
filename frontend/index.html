@@ -1114,9 +1114,15 @@
                 
             } catch (error) {
                 console.error('Error submitting answer:', error);
-                // Fallback: just show next question button
+                // Fallback: show end game only if this was question 5, otherwise continue
                 setTimeout(() => {
-                    document.getElementById('endGameButton').style.display = 'block';
+                    const questionNumber = parseInt(document.getElementById('questionNumber').textContent.split(' ')[1]);
+                    if (questionNumber >= 5) {
+                        document.getElementById('endGameButton').style.display = 'block';
+                    } else {
+                        // Continue to next question even on error
+                        document.getElementById('nextButton').style.display = 'block';
+                    }
                 }, 2000);
             }
         }
