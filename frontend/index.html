@@ -514,13 +514,19 @@
             const link = document.getElementById('checkAvailabilityLink');
             const resultDiv = document.getElementById('usernameCheckResult');
             
-            if (username.length >= 2) {
+            if (username.length >= 3 && username.length <= 20) {
                 link.style.color = '#8e44ad';
                 link.style.cursor = 'pointer';
             } else {
                 link.style.color = '#ccc';
                 link.style.cursor = 'not-allowed';
-                resultDiv.style.display = 'none';
+                if (username.length > 0 && (username.length < 3 || username.length > 20)) {
+                    resultDiv.textContent = 'Username must be 3-20 characters';
+                    resultDiv.style.color = '#ff4444';
+                    resultDiv.style.display = 'block';
+                } else {
+                    resultDiv.style.display = 'none';
+                }
             }
         }
         
@@ -528,7 +534,19 @@
             const username = document.getElementById('signUpUsername').value.trim();
             const resultDiv = document.getElementById('usernameCheckResult');
             
-            if (!username || username.length < 2) {
+            if (!username || username.length < 3) {
+                if (username.length > 0 && username.length < 3) {
+                    resultDiv.textContent = 'Username must be 3-20 characters';
+                    resultDiv.style.color = '#ff4444';
+                    resultDiv.style.display = 'block';
+                }
+                return;
+            }
+            
+            if (username.length > 20) {
+                resultDiv.textContent = 'Username must be 3-20 characters';
+                resultDiv.style.color = '#ff4444';
+                resultDiv.style.display = 'block';
                 return;
             }
             
