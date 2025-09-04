@@ -1251,19 +1251,15 @@
             top10.forEach((player, index) => {
                 let prefix = '';
                 let prefixStyle = '';
-                let style = '';
                 if (index === 0) {
                     prefix = '🥇';
                     prefixStyle = 'font-size: 28px; margin-right: 8px;';
-                    style = 'color: #FFD700; font-weight: bold;';
                 } else if (index === 1) {
                     prefix = '🥈';
                     prefixStyle = 'font-size: 28px; margin-right: 8px;';
-                    style = 'color: #C0C0C0; font-weight: bold;';
                 } else if (index === 2) {
                     prefix = '🥉';
                     prefixStyle = 'font-size: 28px; margin-right: 8px;';
-                    style = 'color: #CD7F32; font-weight: bold;';
                 } else {
                     prefix = `${index + 1}.`;
                     prefixStyle = 'font-size: 16px; margin-right: 8px; margin-left: 6px;';
@@ -1275,7 +1271,7 @@
                 
                 const borderStyle = index === top10.length - 1 ? '' : 'border-bottom: 1px solid rgba(142, 68, 173, 0.1);';
                 
-                html += `<li style="${style} padding: 8px 0; ${borderStyle} font-weight: 500; min-height: 40px; display: flex; align-items: center;">
+                html += `<li style="padding: 8px 0; ${borderStyle} font-weight: 500; min-height: 40px; display: flex; align-items: center;">
                     <span style="${prefixStyle}">${prefix}</span> <span style="${nameStyle}">${displayName}</span> 
                     <span style="margin-left: auto; background: #f0f8ff; color: #8e44ad; padding: 4px 12px; border-radius: 12px; font-weight: bold;">
                         ⭐ ${player.score} pts
