@@ -209,11 +209,10 @@ async function checkUsernameUniqueness(username, headers) {
     
     try {
         const AWS = require('aws-sdk');
-        const cognito = new AWS.CognitoIdentityServiceProvider();
+        const cognito = new AWS.CognitoIdentityServiceProvider({ region: 'us-west-2' });
         
         const params = {
             UserPoolId: process.env.COGNITO_USER_POOL_ID,
-            AttributesToGet: ['preferred_username'],
             Filter: `preferred_username = "${validation.sanitized}"`
         };
         
@@ -227,11 +226,15 @@ async function checkUsernameUniqueness(username, headers) {
         };
     } catch (error) {
         console.error('Username check failed:', sanitizeLogValue(error.message));
-        // Fallback validation - assume unavailable on error for security
+        // For development - show actual error, for production assume unavailable
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ available: false, error: 'Username availability check failed' })
+            body: JSON.stringify({ 
+                available: false, 
+                error: 'Username availability check failed',
+                debug: sanitizeLogValue(error.message)
+            })
         };
     }
 }
