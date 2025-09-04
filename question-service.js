@@ -47,7 +47,8 @@ function sanitizeQuestionText(text) {
         .replace(/&iacute;/g, 'í')
         .replace(/&oacute;/g, 'ó')
         .replace(/&ccedil;/g, 'ç')
-        .replace(/&uuml;/g, 'ü');
+        .replace(/&uuml;/g, 'ü')
+        .replace(/&lrm;/g, '');
     
     // Then sanitize any remaining dangerous characters
     return decoded.replace(/[<>]/g, '').substring(0, 500);
