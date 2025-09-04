@@ -24,6 +24,8 @@ The trivia application demonstrates real-world ElastiCache integration patterns 
 - **Lambda Runtime**: Node.js 18.x
 - **API Gateway**: REST API with CORS enabled
 - **CloudFront**: Global distribution with S3 and API Gateway origins
+- **Question Loading**: Automated preloader Lambda with EventBridge scheduling
+- **Data Processing**: Comprehensive HTML entity decoding for clean text display
 
 **Data Flow Architecture:**
 ```
@@ -38,10 +40,12 @@ User → CloudFront → API Gateway → Lambda → ElastiCache Valkey
 
 **ElastiCache Usage Patterns:**
 1. **Session Management**: User game sessions with TTL
-2. **Question Caching**: Pre-loaded trivia questions by category
+2. **Question Caching**: Pre-loaded trivia questions by category with HTML entity decoding
 3. **User State**: Seen questions tracking per user
 4. **Leaderboards**: Weekly rankings using sorted sets
 5. **Performance Optimization**: Connection pooling and query optimization
+6. **Automated Data Loading**: Scheduled question preloading from external APIs
+7. **Data Quality**: Real-time HTML entity processing for clean user experience
 
 ---
 
@@ -150,6 +154,8 @@ Cache Structure Design:
 - **Timeout Handling**: Default timeouts not suitable for all use cases
 - **Error Messages**: Generic Redis errors, not ElastiCache-specific guidance
 - **Failover Behavior**: Serverless failover not transparent to applications
+- **Data Quality Issues**: HTML entities in cached data causing display problems
+- **API Rate Limits**: External API failures breaking question loading
 
 **Real Error Scenarios**:
 ```javascript
@@ -157,11 +163,15 @@ Cache Structure Design:
 "Connection timeout"
 "READONLY You can't write against a read only replica"
 "LOADING Redis is loading the dataset in memory"
+"Invalid question ID format" // Overly strict validation
+"&quot; appearing in question text" // HTML entity issues
 
 // What developers need:
 "ElastiCache Serverless is scaling up, retry in 2 seconds"
 "Your query exceeded the 5MB response limit, consider pagination"
 "Connection pool exhausted, consider connection reuse patterns"
+"HTML entities detected and auto-decoded for clean display"
+"Question validation relaxed for better game flow"
 ```
 
 ### 7. **Integration with AWS Services**
@@ -345,6 +355,8 @@ const cache = new ElastiCache({
 // ⚠️  Large payload: consider compression (15KB)
 // 💡 Suggestion: Use hash structure for nested data
 // 📊 Hit rate: 85% (last 100 operations)
+// 🔧 HTML entities detected: auto-decoded 15 entities
+// ⚡ Question preloader: 500 questions loaded successfully
 ```
 
 ---
@@ -500,24 +512,48 @@ const getQuestions = async (category = 'general') => {
 const preloadQuestions = async () => {
   const categories = ['general', 'science', 'history', 'sports'];
   
-  await Promise.all(
-    categories.map(category => getQuestions(category))
-  );
+  // Fetch 500 questions total (50 per batch, 10 batches)
+  for (let batch = 0; batch < 10; batch++) {
+    const questions = await fetchFromOpenTDB(50);
+    const processedQuestions = questions.map(q => ({
+      ...q,
+      // Decode HTML entities for clean display
+      question: decodeHtmlEntities(q.question),
+      correct_answer: decodeHtmlEntities(q.correct_answer),
+      incorrect_answers: q.incorrect_answers.map(a => decodeHtmlEntities(a))
+    }));
+    
+    await storeInValkey(processedQuestions);
+    
+    // Rate limiting - 5 second delay between API calls
+    if (batch < 9) await sleep(5000);
+  }
+};
+
+// HTML Entity Decoder for clean text display
+const decodeHtmlEntities = (text) => {
+  const entities = {
+    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"',
+    '&#039;': "'", '&ouml;': 'ö', '&lrm;': '', // and 30+ more
+  };
+  return text.replace(/&[a-zA-Z0-9#]+;/g, match => entities[match] || match);
 };
 ```
 
 **Question Caching Architecture:**
 ```
 Scheduled Pre-loading:
-EventBridge Rule (every 6 hours)
+EventBridge Rule (Manual trigger or scheduled)
         ↓
 Preloader Lambda Function
         ↓
-OpenTDB API (50 questions per category)
+OpenTDB API (500 questions total, 10 batches of 50)
         ↓
-Valkey Lists (valkey:questions:{category})
+HTML Entity Decoding (&quot; → ", &#039; → ', &ouml; → ö)
         ↓
-Game Lambda (instant question retrieval)
+Valkey Weekly Cache (valkey:weekly_questions:{year}-W{week})
+        ↓
+Game Lambda (instant question retrieval with clean text)
 ```
 
 ### 4. **User State Tracking Pattern**
