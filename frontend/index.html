@@ -864,9 +864,14 @@
                 return;
             }
             
+            // If no email in session, prompt user to enter it
             if (!currentEmail) {
-                showError('verificationError', 'Session expired. Please sign in again.');
-                return;
+                const email = prompt('Please enter your email address:');
+                if (!email) {
+                    showError('verificationError', 'Email is required for verification.');
+                    return;
+                }
+                currentEmail = email;
             }
             
             const userData = {
@@ -891,8 +896,12 @@
         
         function resendVerificationCode() {
             if (!currentEmail) {
-                showError('verificationError', 'Session expired. Please sign in again.');
-                return;
+                const email = prompt('Please enter your email address:');
+                if (!email) {
+                    showError('verificationError', 'Email is required to resend code.');
+                    return;
+                }
+                currentEmail = email;
             }
             
             const userData = {
