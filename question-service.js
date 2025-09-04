@@ -26,29 +26,60 @@ function validateCategory(category) {
     return category ? category.toLowerCase() : 'general';
 }
 
+// Comprehensive HTML entity mapping for better performance
+const HTML_ENTITIES = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#x27;': "'",
+    '&#039;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+    '&rsquo;': "'",
+    '&lsquo;': "'",
+    '&rdquo;': '"',
+    '&ldquo;': '"',
+    '&aelig;': 'æ',
+    '&iacute;': 'í',
+    '&oacute;': 'ó',
+    '&ccedil;': 'ç',
+    '&uuml;': 'ü',
+    '&ouml;': 'ö',
+    '&auml;': 'ä',
+    '&eacute;': 'é',
+    '&egrave;': 'è',
+    '&ecirc;': 'ê',
+    '&euml;': 'ë',
+    '&ntilde;': 'ñ',
+    '&agrave;': 'à',
+    '&aacute;': 'á',
+    '&acirc;': 'â',
+    '&atilde;': 'ã',
+    '&ugrave;': 'ù',
+    '&uacute;': 'ú',
+    '&ucirc;': 'û',
+    '&igrave;': 'ì',
+    '&icirc;': 'î',
+    '&iuml;': 'ï',
+    '&ograve;': 'ò',
+    '&ocirc;': 'ô',
+    '&otilde;': 'õ',
+    '&lrm;': '',
+    '&rlm;': ''
+};
+
 function sanitizeQuestionText(text) {
     if (!text || typeof text !== 'string') {
         return '';
     }
-    // First decode HTML entities to make text readable
-    const decoded = text
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#x27;/g, "'")
-        .replace(/&#039;/g, "'")
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&rsquo;/g, "'")
-        .replace(/&lsquo;/g, "'")
-        .replace(/&rdquo;/g, '"')
-        .replace(/&ldquo;/g, '"')
-        .replace(/&aelig;/g, 'æ')
-        .replace(/&iacute;/g, 'í')
-        .replace(/&oacute;/g, 'ó')
-        .replace(/&ccedil;/g, 'ç')
-        .replace(/&uuml;/g, 'ü')
-        .replace(/&lrm;/g, '');
+    
+    // Use single regex replace with callback for better performance
+    const entityRegex = /&(?:amp|lt|gt|quot|#x27|#039|apos|nbsp|rsquo|lsquo|rdquo|ldquo|aelig|[ioa](?:acute|grave|circ|tilde|uml)|[eun](?:acute|grave|circ|tilde|uml)|ccedil|[lr]m);/g;
+    
+    const decoded = text.replace(entityRegex, (match) => {
+        return HTML_ENTITIES[match] || match;
+    });
     
     // Then sanitize any remaining dangerous characters
     return decoded.replace(/[<>]/g, '').substring(0, 500);
