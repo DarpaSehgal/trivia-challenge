@@ -7,6 +7,23 @@ function sanitizeLogValue(value) {
     return String(value || '').replace(/[\r\n\t\x00-\x1f\x7f-\x9f<>"'&]/g, ' ').slice(0, 200);
 }
 
+// HTML entity decoder (same as in question-service.js)
+const HTML_ENTITIES = {
+    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#x27;': "'", '&#039;': "'",
+    '&apos;': "'", '&nbsp;': ' ', '&rsquo;': "'", '&lsquo;': "'", '&rdquo;': '"', '&ldquo;': '"',
+    '&aelig;': 'æ', '&iacute;': 'í', '&oacute;': 'ó', '&ccedil;': 'ç', '&uuml;': 'ü', '&ouml;': 'ö',
+    '&auml;': 'ä', '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê', '&euml;': 'ë', '&ntilde;': 'ñ',
+    '&agrave;': 'à', '&aacute;': 'á', '&acirc;': 'â', '&atilde;': 'ã', '&ugrave;': 'ù', '&uacute;': 'ú',
+    '&ucirc;': 'û', '&igrave;': 'ì', '&icirc;': 'î', '&iuml;': 'ï', '&ograve;': 'ò', '&ocirc;': 'ô',
+    '&otilde;': 'õ', '&lrm;': '', '&rlm;': ''
+};
+
+function decodeHtmlEntities(text) {
+    if (!text || typeof text !== 'string') return text;
+    const entityRegex = /&(?:amp|lt|gt|quot|#x27|#039|apos|nbsp|rsquo|lsquo|rdquo|ldquo|aelig|[ioa](?:acute|grave|circ|tilde|uml)|[eun](?:acute|grave|circ|tilde|uml)|ccedil|[lr]m);/g;
+    return text.replace(entityRegex, (match) => HTML_ENTITIES[match] || match);
+}
+
 function validateInput(input, type, maxLength = 100) {
     if (input === null || input === undefined) {
         throw new Error(`${type} is required`);
@@ -15,8 +32,9 @@ function validateInput(input, type, maxLength = 100) {
     if (str.length > maxLength) {
         throw new Error(`${type} exceeds maximum length of ${maxLength}`);
     }
-    // Sanitize HTML entities and dangerous characters
-    return validator.escape(str);
+    // Decode HTML entities and sanitize dangerous characters
+    const decoded = decodeHtmlEntities(str);
+    return decoded.replace(/[<>]/g, '').substring(0, maxLength);
 }
 
 const TARGET_QUESTIONS_PER_WEEK = 500;
