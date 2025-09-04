@@ -449,7 +449,7 @@ class ValkeyClient {
 
     sanitizeUsername(username) {
         if (!username) return '';
-        return String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '').substring(0, 20);
+        return String(username).replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 20);
     }
 
     parseJsonSafely(jsonString) {
