@@ -253,7 +253,8 @@
                     </div>
                     <div id="verificationForm" style="display: none; margin-bottom: 30px;">
                         <h3 style="color: #8e44ad; margin-bottom: 20px; font-size: 20px; font-weight: 600; margin-top: 20px;">📧 Verify Your Account</h3>
-                        <input type="text" id="verificationCode" placeholder="Enter 6-digit code from email" maxlength="6" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="email" id="verificationEmail" placeholder="Your email address" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 15px; margin-top: 20px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
+                        <input type="text" id="verificationCode" placeholder="Enter 6-digit code from email" maxlength="6" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 10px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'">
                         <div id="verificationError" style="display: none; color: #ff4444; font-size: 14px; margin-bottom: 15px; text-align: left; max-width: 300px; margin-left: calc(50% - 150px);"></div>
                         <div style="margin-bottom: 30px; margin-top: 20px;">
                             <div style="background: linear-gradient(135deg, #8e44ad, #9b59b6); padding: 3px; border-radius: 35px; display: inline-block; box-shadow: 0 8px 25px rgba(142, 68, 173, 0.3); margin-bottom: 15px;">
@@ -485,7 +486,7 @@
         
         function clearAllForms() {
             // Clear all input fields that exist
-            const fields = ['signInEmail', 'signInPassword', 'signUpUsername', 'signUpEmail', 'signUpPassword', 'signUpConfirmPassword', 'forgotUsername', 'resetCode', 'newPassword', 'confirmNewPassword'];
+            const fields = ['signInEmail', 'signInPassword', 'signUpUsername', 'signUpEmail', 'signUpPassword', 'signUpConfirmPassword', 'forgotUsername', 'resetCode', 'newPassword', 'confirmNewPassword', 'verificationCode'];
             fields.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (field) field.value = '';
@@ -496,6 +497,7 @@
             clearError('signUpError');
             clearError('forgotPasswordError');
             clearError('resetPasswordError');
+            clearError('verificationError');
             
             // Reset username availability check
             const link = document.getElementById('checkAvailabilityLink');
@@ -854,28 +856,28 @@
             document.getElementById('resetPasswordForm').style.display = 'none';
             document.getElementById('verificationForm').style.display = 'block';
             document.getElementById('signInTagline').style.display = 'none';
+            
+            // Clear verification form specifically
+            document.getElementById('verificationCode').value = '';
+            clearError('verificationError');
         }
         
         function verifyAccount() {
             const code = document.getElementById('verificationCode').value.trim();
+            const email = document.getElementById('verificationEmail').value.trim() || currentEmail;
+            
+            if (!email) {
+                showError('verificationError', 'Please enter your email address.');
+                return;
+            }
             
             if (!code) {
                 showError('verificationError', 'Please enter the verification code.');
                 return;
             }
             
-            // If no email in session, prompt user to enter it
-            if (!currentEmail) {
-                const email = prompt('Please enter your email address:');
-                if (!email) {
-                    showError('verificationError', 'Email is required for verification.');
-                    return;
-                }
-                currentEmail = email;
-            }
-            
             const userData = {
-                Username: currentEmail,
+                Username: email,
                 Pool: userPool
             };
             
