@@ -220,7 +220,7 @@
                         </div>
                     </div>
                     <div id="signUpForm" style="display: none; margin-bottom: 30px;">
-                        <input type="text" id="signUpUsername" placeholder="Username (2-20 chars)" maxlength="20" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 5px; margin-top: 30px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'" oninput="toggleCheckAvailabilityLink()">
+                        <input type="text" id="signUpUsername" placeholder="Username (min 3 chars)" maxlength="20" style="width: 100%; max-width: 300px; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 16px; text-align: left; outline: none; transition: border-color 0.3s ease; margin-bottom: 5px; margin-top: 30px;" onfocus="this.style.borderColor='#8e44ad'" onblur="this.style.borderColor='#e0e0e0'" oninput="toggleCheckAvailabilityLink()">
                         <div style="margin-bottom: 25px; max-width: 300px; margin-left: auto; margin-right: auto;">
                             <div style="text-align: right;">
                                 <span id="checkAvailabilityLink" onclick="checkUsernameAvailability()" style="color: #ccc; text-decoration: none; cursor: not-allowed; font-size: 14px; font-weight: 600;">Check availability</span>
@@ -520,13 +520,7 @@
             } else {
                 link.style.color = '#ccc';
                 link.style.cursor = 'not-allowed';
-                if (username.length > 0 && (username.length < 3 || username.length > 20)) {
-                    resultDiv.textContent = 'Username must be 3-20 characters';
-                    resultDiv.style.color = '#ff4444';
-                    resultDiv.style.display = 'block';
-                } else {
-                    resultDiv.style.display = 'none';
-                }
+                resultDiv.style.display = 'none';
             }
         }
         
