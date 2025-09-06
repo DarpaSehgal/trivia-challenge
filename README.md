@@ -9,17 +9,23 @@ A serverless trivia application built with AWS Lambda and ElastiCache Valkey Ser
 ![AWS Trivia Challenge Architecture](architecture/aws_trivia_challenge_architecture.png)
 
 ### Architecture Overview
-The application follows a serverless architecture pattern with the following key components:
+The application follows a serverless architecture pattern with proper AWS component placement:
 
-- **CloudFront CDN**: Global content delivery and API routing
+**Global Services:**
+- **CloudFront CDN**: Global content delivery with bidirectional S3 connection
 - **S3 Frontend Bucket**: Static website hosting (single-page vanilla HTML/CSS/JavaScript)
-- **API Gateway**: REST API endpoint management
-- **Lambda Functions**: Serverless compute (Game Logic, Question Preloader)
-- **ElastiCache Serverless**: In-memory cache for sessions and questions
-- **Cognito User Pool**: User authentication and management
-- **VPC with Public/Private Subnets**: Network isolation and security
-- **NAT Gateway**: Outbound internet access for private Lambda functions
-- **External API**: OpenTDB API for trivia questions with HTML entity decoding
+- **Cognito User Pool**: User authentication and JWT token management
+
+**VPC Architecture:**
+- **Internet Gateway**: VPC boundary component for external connectivity
+- **Public Subnet**: Contains NAT Gateway for outbound internet access
+- **Private Subnet**: Isolated Lambda functions and ElastiCache for security
+- **API Gateway**: REST API endpoint routing requests to Lambda functions
+- **Lambda Functions**: Game Logic and Question Preloader with bidirectional ElastiCache connections
+- **ElastiCache Serverless**: In-memory cache with complete data flow integration
+
+**External Integration:**
+- **OpenTDB API**: Complete question fetching flow through NAT Gateway and Internet Gateway
 
 For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
