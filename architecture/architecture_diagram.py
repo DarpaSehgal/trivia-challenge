@@ -82,6 +82,3 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     igw >> Edge(style="dashed") >> nat
     nat >> Edge(style="dashed") >> lambda_preloader
     
-    # Internet Gateway to public subnet connection
-    igw >> nat
-    
