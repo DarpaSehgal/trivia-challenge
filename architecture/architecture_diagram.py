@@ -25,7 +25,7 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
             cloudfront = CloudFront("CloudFront CDN")
             cognito = Cognito("Cognito User Pool")
         
-        with Cluster("VPC (us-west-2)", graph_attr={"style": "rounded", "bgcolor": "lightblue"}):
+        with Cluster("VPC", graph_attr={"style": "rounded", "bgcolor": "lightblue"}):
             api_gw = APIGateway("API Gateway")
             
             with Cluster("Public Subnets", graph_attr={"rank": "min"}):

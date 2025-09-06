@@ -282,4 +282,8 @@ const handler = async (event, context) => {
     }
 };
 
-module.exports = { questionPreloader, handler };
+module.exports = { 
+    questionPreloader, 
+    handler,
+    preloadWeeklyQuestions: () => questionPreloader.preloadWeeklyQuestions()
+};
