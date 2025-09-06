@@ -12,10 +12,9 @@ from diagrams.custom import Custom
 from diagrams.aws.network import APIGateway, CloudFront, NATGateway, InternetGateway, VPC
 from diagrams.aws.storage import S3
 from diagrams.aws.security import Cognito
-
+from diagrams.aws.integration import Eventbridge
 from diagrams.onprem.client import Users
 from diagrams.saas.cdn import Cloudflare
-from diagrams.programming.framework import React
 
 with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", graph_attr={"rankdir": "TB", "ranksep": "1.5"}, edge_attr={"fontsize": "16", "labeldistance": "0.3", "labelangle": "0"}):
     users = Users("Users")
@@ -25,12 +24,13 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
         cloudfront = CloudFront("CloudFront CDN")
         cognito = Cognito("Cognito User Pool")
         s3 = S3("S3 Frontend Bucket")
+        api_gw = APIGateway("API Gateway")
+        eventbridge = Eventbridge("EventBridge")
         
         # Internet Gateway at VPC boundary
         igw = InternetGateway("Internet Gateway")
         
         with Cluster("VPC", graph_attr={"style": "rounded", "bgcolor": "lightblue"}):
-            api_gw = APIGateway("API Gateway")
             
             with Cluster("Public Subnet", graph_attr={"rank": "min"}):
                 nat = NATGateway("NAT Gateway")
@@ -48,22 +48,24 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     with Cluster("External"):
         opentdb = Cloudflare("OpenTDB API")
     
-    # User access flow
+    # Bidirectional user access flow
     users >> cloudfront
+    cloudfront >> Edge(style="dashed") >> users
     
     # Bidirectional CloudFront and S3 connection
     cloudfront >> s3
     s3 >> Edge(style="dashed") >> cloudfront
     
-    # Frontend authentication with Cognito
-    cloudfront >> cognito
-    cognito >> Edge(style="dashed") >> cloudfront
+    # Direct authentication flow (dotted for auth)
+    users >> Edge(style="dotted") >> cognito
+    cognito >> Edge(style="dotted") >> users
     
     # API requests through CloudFront
     cloudfront >> api_gw
     
-    # Lambda invocation from API Gateway
+    # Bidirectional Lambda and API Gateway
     api_gw >> lambda_main
+    lambda_main >> Edge(style="dashed") >> api_gw
     
     # Bidirectional cache operations
     lambda_main >> elasticache
@@ -72,6 +74,9 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     # Question preloader cache operations
     lambda_preloader >> elasticache
     elasticache >> Edge(style="dashed") >> lambda_preloader
+    
+    # Scheduled event flow (bold for events)
+    eventbridge >> Edge(style="bold") >> lambda_preloader
     
     # Complete question preloading flow
     lambda_preloader >> nat
