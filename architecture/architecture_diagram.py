@@ -12,8 +12,7 @@ from diagrams.custom import Custom
 from diagrams.aws.network import APIGateway, CloudFront, NATGateway, InternetGateway, VPC
 from diagrams.aws.storage import S3
 from diagrams.aws.security import Cognito
-from diagrams.aws.management import Cloudwatch
-from diagrams.aws.integration import SNS
+
 from diagrams.onprem.client import Users
 from diagrams.saas.cdn import Cloudflare
 from diagrams.programming.framework import React
@@ -43,9 +42,7 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
         
         s3 = S3("S3 Frontend Bucket")
         
-        with Cluster("Monitoring"):
-            cloudwatch = Cloudwatch("CloudWatch")
-            sns = SNS("SNS Alerts")
+
     
     with Cluster("External"):
         opentdb = Cloudflare("OpenTDB API")
@@ -80,8 +77,3 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     opentdb >> Edge(style="dashed") >> igw
     igw >> Edge(style="dashed") >> nat
     
-    # Monitoring and alerting
-    lambda_main >> cloudwatch
-    lambda_preloader >> cloudwatch
-    elasticache >> cloudwatch
-    cloudwatch >> sns
