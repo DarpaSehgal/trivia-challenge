@@ -48,38 +48,38 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     with Cluster("External"):
         opentdb = Cloudflare("OpenTDB API")
     
-    # 1. User access
-    users >> Edge(label="❶") >> cloudfront
+    # User access
+    users >> cloudfront
     
-    # 2. Static content delivery
-    cloudfront >> Edge(label="❷") >> s3
+    # Static content delivery
+    cloudfront >> s3
     
-    # 3. API requests
-    cloudfront >> Edge(label="❸", minlen="1") >> api_gw
+    # API requests
+    cloudfront >> api_gw
     
-    # 4. Lambda invocation
-    api_gw >> Edge(label="❹") >> lambda_main
+    # Lambda invocation
+    api_gw >> lambda_main
     
-    # 5. Authentication
-    lambda_main >> Edge(label="❺", minlen="1") >> cognito
+    # Authentication
+    lambda_main >> cognito
     
-    # 6. Cache operations
-    lambda_main >> Edge(label="❻") >> elasticache
+    # Cache operations
+    lambda_main >> elasticache
     
-    # 7. Question preloading
-    lambda_preloader >> Edge(label="❼") >> elasticache
+    # Question preloading
+    lambda_preloader >> elasticache
     
-    # 8. Question preloading from external API
-    lambda_preloader >> Edge(label="❽") >> nat
-    nat >> Edge(label="❾") >> igw
-    igw >> Edge(label="❿") >> opentdb
+    # Question preloading from external API
+    lambda_preloader >> nat
+    nat >> igw
+    igw >> opentdb
     
-    # 11. Response back to preloader
-    opentdb >> Edge(label="⓫", style="dashed") >> igw
-    igw >> Edge(label="⓬", style="dashed") >> nat
+    # Response back to preloader
+    opentdb >> Edge(style="dashed") >> igw
+    igw >> Edge(style="dashed") >> nat
     
-    # 13. Monitoring and alerting
-    lambda_main >> Edge(label="⓭") >> cloudwatch
-    lambda_preloader >> Edge(label="⓮") >> cloudwatch
-    elasticache >> Edge(label="⓯") >> cloudwatch
-    cloudwatch >> Edge(label="⓰") >> sns
+    # Monitoring and alerting
+    lambda_main >> cloudwatch
+    lambda_preloader >> cloudwatch
+    elasticache >> cloudwatch
+    cloudwatch >> sns
