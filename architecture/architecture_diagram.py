@@ -61,9 +61,6 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     # Lambda invocation from API Gateway
     api_gw >> lambda_main
     
-    # Authentication flow
-    lambda_main >> cognito
-    
     # Bidirectional cache operations
     lambda_main >> elasticache
     elasticache >> Edge(style="dashed") >> lambda_main
