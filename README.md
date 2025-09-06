@@ -12,7 +12,7 @@ A serverless trivia application built with AWS Lambda and ElastiCache Valkey Ser
 The application follows a serverless architecture pattern with the following key components:
 
 - **CloudFront CDN**: Global content delivery and API routing
-- **S3 Frontend Bucket**: Static website hosting (HTML, JS, CSS)
+- **S3 Frontend Bucket**: Static website hosting (single-page vanilla HTML/CSS/JavaScript)
 - **API Gateway**: REST API endpoint management
 - **Lambda Functions**: Serverless compute (Game Logic, Question Preloader)
 - **ElastiCache Serverless**: In-memory cache for sessions and questions
@@ -79,7 +79,7 @@ aws cloudformation describe-stacks \
 ### 🎯 Core Functionality
 - **User Authentication**: AWS Cognito integration
 - **5-Question Sessions**: Trivia from OpenTDB API
-- **Smart Caching**: Questions cached in Valkey with TTL
+- **Smart Caching**: Questions cached in ElastiCache with TTL and HTML entity decoding
 - **Duplicate Prevention**: Track seen questions per user
 - **Speed Scoring**: Bonus points for quick answers (10 + max(0, 5 - time_taken))
 
@@ -88,11 +88,11 @@ aws cloudformation describe-stacks \
 - **Automatic Cleanup**: TTL-based data expiry
 - **Top 10 Display**: Current week's best players
 
-### 🔧 Valkey Integration Patterns
-- **Caching**: `valkey:questions:<category>`
-- **Session Management**: `valkey:session:<uuid>`
-- **User Tracking**: `valkey:user:<id>:seen_questions`
-- **Leaderboards**: `valkey:leaderboard:<year>-<week>`
+### 🔧 ElastiCache Integration Patterns
+- **Question Caching**: `valkey:weekly_questions:<year>-W<week>` (500 questions loaded weekly)
+- **Session Management**: `valkey:session:<uuid>` (Hash structure with TTL)
+- **User Tracking**: `valkey:user:<id>:seen_questions` (Set with 7-day TTL)
+- **Leaderboards**: `valkey:leaderboard:<year>-<week>` (Sorted sets with 8-week TTL)
 
 ## 📊 API Endpoints
 
@@ -127,16 +127,16 @@ POST /submit-answer
 ## 🔧 Configuration
 
 ### Environment Variables (Auto-configured)
-- `VALKEY_HOST`: ElastiCache Valkey endpoint
+- `VALKEY_HOST`: ElastiCache Serverless endpoint
 - `COGNITO_USER_POOL_ID`: Cognito User Pool ID
 - `COGNITO_CLIENT_ID`: Cognito Client ID
 
-### Valkey Data Structure
+### ElastiCache Data Structure
 ```
-valkey:questions:general          # Cached questions by category
-valkey:user:123:seen_questions    # Set of seen question IDs
-valkey:session:uuid-123           # Temporary session data
-valkey:leaderboard:2024-12        # Weekly sorted set
+valkey:weekly_questions:2025-W36  # 500 pre-loaded questions (weekly refresh)
+valkey:user:123:seen_questions     # Set of seen question IDs (7-day TTL)
+valkey:session:uuid-123            # Hash: userId, score, currentQuestion (1-hour TTL)
+valkey:leaderboard:2025-W36        # Sorted set: userId:username → score (8-week TTL)
 ```
 
 ## 🧪 Local Development
@@ -156,10 +156,11 @@ The frontend includes mock data for testing without full AWS setup.
 
 ## 📈 Performance Optimizations
 
-1. **Question Pre-loading**: Scheduled Lambda runs every 6 hours
-2. **Connection Reuse**: Persistent Valkey connections
-3. **TTL Management**: Automatic cleanup of expired data
-4. **Batch Operations**: Efficient Redis commands
+1. **Question Pre-loading**: 500 questions loaded weekly via Lambda (manual trigger)
+2. **HTML Entity Decoding**: Clean text processing (&quot; → ", &#039; → ', &ouml; → ö)
+3. **Connection Reuse**: Persistent ElastiCache connections in Lambda
+4. **TTL Management**: Automatic cleanup of expired sessions, user state, and leaderboards
+5. **Batch Operations**: Efficient Redis-compatible commands
 
 ## 🔒 Security Features
 
