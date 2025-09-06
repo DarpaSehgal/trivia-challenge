@@ -14,12 +14,12 @@ The application follows a serverless architecture pattern with the following key
 - **CloudFront CDN**: Global content delivery and API routing
 - **S3 Frontend Bucket**: Static website hosting (HTML, JS, CSS)
 - **API Gateway**: REST API endpoint management
-- **Lambda Functions**: Serverless compute (trivia-game, question-preloader)
-- **ElastiCache Valkey Serverless**: In-memory cache for sessions and questions
+- **Lambda Functions**: Serverless compute (Game Logic, Question Preloader)
+- **ElastiCache Serverless**: In-memory cache for sessions and questions
 - **Cognito User Pool**: User authentication and management
 - **VPC with Public/Private Subnets**: Network isolation and security
 - **NAT Gateway**: Outbound internet access for private Lambda functions
-- **CloudWatch & SNS**: Monitoring, logging, and alerting
+- **External API**: OpenTDB API for trivia questions with HTML entity decoding
 
 For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
