@@ -6,7 +6,7 @@ Run: pip install diagrams && python architecture_diagram.py
 
 from diagrams import Diagram, Cluster, Edge
 from diagrams.aws.compute import Lambda
-from diagrams.aws.database import ElasticacheForMemcached  # Using as Valkey icon placeholder
+from diagrams.aws.database import ElasticacheForRedis
 from diagrams.aws.network import APIGateway, CloudFront, NATGateway, InternetGateway, VPC
 from diagrams.aws.storage import S3
 from diagrams.aws.security import Cognito
@@ -33,11 +33,11 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
             
             with Cluster("Private Subnets", graph_attr={"rank": "max"}):
                 with Cluster("Compute"):
-                    lambda_main = Lambda("Lambda\ntrivia-game")
-                    lambda_preloader = Lambda("Lambda\nquestion-preloader")
+                    lambda_main = Lambda("Game Logic\nLambda")
+                    lambda_preloader = Lambda("Question Preloader\nLambda")
                 
                 with Cluster("Data"):
-                    valkey = ElasticacheForMemcached("ElastiCache\nValkey Serverless")
+                    elasticache = ElasticacheForRedis("ElastiCache")
         
         s3 = S3("S3 Frontend Bucket")
         
@@ -64,22 +64,22 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     lambda_main >> Edge(label="❺", minlen="1") >> cognito
     
     # 6. Cache operations
-    lambda_main >> Edge(label="❻") >> valkey
+    lambda_main >> Edge(label="❻") >> elasticache
     
     # 7. Question preloading
-    lambda_preloader >> Edge(label="❼") >> valkey
+    lambda_preloader >> Edge(label="❼") >> elasticache
     
-    # 8-11. Question preloading from external API
+    # 8. Question preloading from external API
     lambda_preloader >> Edge(label="❽") >> nat
     nat >> Edge(label="❾") >> igw
     igw >> Edge(label="❿") >> opentdb
     
-    # 11-12. Response back to preloader
+    # 11. Response back to preloader
     opentdb >> Edge(label="⓫", style="dashed") >> igw
     igw >> Edge(label="⓬", style="dashed") >> nat
     
-    # 13-15. Monitoring and alerting
-    lambda_main >> Edge(label="⓭", minlen="1") >> cloudwatch
+    # 13. Monitoring and alerting
+    lambda_main >> Edge(label="⓭") >> cloudwatch
     lambda_preloader >> Edge(label="⓮") >> cloudwatch
-    valkey >> Edge(label="⓯") >> cloudwatch
+    elasticache >> Edge(label="⓯") >> cloudwatch
     cloudwatch >> Edge(label="⓰") >> sns
