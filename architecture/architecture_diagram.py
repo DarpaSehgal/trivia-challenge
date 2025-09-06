@@ -55,6 +55,10 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     cloudfront >> s3
     s3 >> Edge(style="dashed") >> cloudfront
     
+    # Frontend authentication with Cognito
+    cloudfront >> cognito
+    cognito >> Edge(style="dashed") >> cloudfront
+    
     # API requests through CloudFront
     cloudfront >> api_gw
     
