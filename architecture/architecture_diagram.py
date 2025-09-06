@@ -8,6 +8,7 @@ from diagrams import Diagram, Cluster, Edge
 from diagrams.aws.compute import Lambda
 from diagrams.aws.database import ElasticacheForRedis
 from diagrams import Node
+from diagrams.custom import Custom
 from diagrams.aws.network import APIGateway, CloudFront, NATGateway, InternetGateway, VPC
 from diagrams.aws.storage import S3
 from diagrams.aws.security import Cognito
@@ -38,13 +39,7 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
                     lambda_preloader = Lambda("Question Preloader\nLambda")
                 
                 with Cluster("Data"):
-                    # Use custom ElastiCache Serverless icon
-                    import os
-                    icon_path = os.path.join(os.path.dirname(__file__), "elasticache-serverless-icon.png")
-                    if os.path.exists(icon_path):
-                        elasticache = Node("ElastiCache", icon=icon_path)
-                    else:
-                        elasticache = ElasticacheForRedis("ElastiCache")
+                    elasticache = Custom("ElastiCache", "./elasticache-serverless-icon.png")
         
         s3 = S3("S3 Frontend Bucket")
         
