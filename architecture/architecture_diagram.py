@@ -21,18 +21,21 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     users = Users("Users")
     
     with Cluster("AWS Cloud"):
-        with Cluster("Global Services"):
-            cloudfront = CloudFront("CloudFront CDN")
-            cognito = Cognito("Cognito User Pool")
+        # Global services outside VPC
+        cloudfront = CloudFront("CloudFront CDN")
+        cognito = Cognito("Cognito User Pool")
+        s3 = S3("S3 Frontend Bucket")
+        
+        # Internet Gateway at VPC boundary
+        igw = InternetGateway("Internet Gateway")
         
         with Cluster("VPC", graph_attr={"style": "rounded", "bgcolor": "lightblue"}):
             api_gw = APIGateway("API Gateway")
             
-            with Cluster("Public Subnets", graph_attr={"rank": "min"}):
-                igw = InternetGateway("Internet Gateway")
+            with Cluster("Public Subnet", graph_attr={"rank": "min"}):
                 nat = NATGateway("NAT Gateway")
             
-            with Cluster("Private Subnets", graph_attr={"rank": "max"}):
+            with Cluster("Private Subnet", graph_attr={"rank": "max"}):
                 with Cluster("Compute"):
                     lambda_main = Lambda("Game Logic\nLambda")
                     lambda_preloader = Lambda("Question Preloader\nLambda")
@@ -40,40 +43,45 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
                 with Cluster("Data"):
                     elasticache = Custom("ElastiCache", "./elasticache-serverless-icon.png")
         
-        s3 = S3("S3 Frontend Bucket")
-        
 
     
     with Cluster("External"):
         opentdb = Cloudflare("OpenTDB API")
     
-    # User access
+    # User access flow
     users >> cloudfront
     
-    # Static content delivery
+    # Bidirectional CloudFront and S3 connection
     cloudfront >> s3
+    s3 >> Edge(style="dashed") >> cloudfront
     
-    # API requests
+    # API requests through CloudFront
     cloudfront >> api_gw
     
-    # Lambda invocation
+    # Lambda invocation from API Gateway
     api_gw >> lambda_main
     
-    # Authentication
+    # Authentication flow
     lambda_main >> cognito
     
-    # Cache operations
+    # Bidirectional cache operations
     lambda_main >> elasticache
+    elasticache >> Edge(style="dashed") >> lambda_main
     
-    # Question preloading
+    # Question preloader cache operations
     lambda_preloader >> elasticache
+    elasticache >> Edge(style="dashed") >> lambda_preloader
     
-    # Question preloading from external API
+    # Complete question preloading flow
     lambda_preloader >> nat
     nat >> igw
     igw >> opentdb
     
-    # Response back to preloader
+    # Response back through same path
     opentdb >> Edge(style="dashed") >> igw
     igw >> Edge(style="dashed") >> nat
+    nat >> Edge(style="dashed") >> lambda_preloader
+    
+    # Internet Gateway to public subnet connection
+    igw >> nat
     
