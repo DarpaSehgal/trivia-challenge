@@ -2,8 +2,6 @@
 
 A serverless trivia application built with AWS Lambda and ElastiCache Valkey Serverless, demonstrating real-world integration patterns and Valkey's key features.
 
-> **CDK Deployment Ready** - Now with proper IAM permissions configured
-
 ## 🏗️ Architecture
 
 ![AWS Trivia Challenge Architecture](architecture/aws_trivia_challenge_architecture.png)
@@ -36,54 +34,37 @@ The application follows a serverless architecture pattern with proper AWS compon
 
 For detailed data flow description, see [Architecture Documentation](architecture/architecture_description.md).
 
-## 🚀 Quick Deploy (CDK)
-
-### One-Command Deployment
-```bash
-# Install CDK globally
-npm install -g aws-cdk
-
-# Deploy the stack
-cd cdk
-npm install
-npx cdk bootstrap  # First time only
-npx cdk deploy
-```
-
-### Fork & Deploy via GitHub Actions
-1. Fork this repository
-2. Set AWS credentials in GitHub Secrets:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
-3. Push to main branch - automatic deployment via `.github/workflows/deploy-cdk.yml`
-
-## 🛠️ Manual Setup (Advanced)
+## 🚀 Quick Start
 
 ### Prerequisites
-- AWS CLI configured
+- AWS CLI configured with appropriate permissions
 - Node.js 18+
+- AWS CDK installed globally: `npm install -g aws-cdk`
 
-### 1. Install Dependencies
+### Deploy with CDK
 ```bash
-npm install
-```
-
-### 2. Deploy Infrastructure (CDK)
-```bash
-cd cdk
+# Clone and deploy
+git clone <repository-url>
+cd mock-trading-app-lambda/cdk
 npm install
 npx cdk bootstrap  # First time only
 npx cdk deploy
 ```
 
-### 3. Get Application URL
+### Get Your Application URL
 ```bash
-# CDK automatically deploys Lambda code
 aws cloudformation describe-stacks \
   --stack-name TriviaChallenge \
   --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' \
   --output text
 ```
+
+### Alternative: GitHub Actions Deployment
+1. Fork this repository
+2. Set AWS credentials in GitHub Secrets:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+3. Push to main branch for automatic deployment
 
 
 
@@ -152,28 +133,28 @@ valkey:session:uuid-123            # Hash: userId, score, currentQuestion (1-hou
 valkey:leaderboard:2025-W36        # Sorted set: userId:username → score (8-week TTL)
 ```
 
-## 🧪 Local Development
+## 🧪 Development
 
-### Using CDK Local Development
+### Local Development
 ```bash
 # Watch for changes and auto-deploy
 cd cdk
 npx cdk watch
 
-# Or synthesize CloudFormation template
+# Generate CloudFormation template
 npx cdk synth
 ```
 
-### Mock Data
-The frontend includes mock data for testing without full AWS setup.
+### Testing
+The frontend includes mock data for testing without full AWS deployment.
 
-## 📈 Performance Optimizations
+## 📈 Performance Features
 
-1. **Question Pre-loading**: 500 questions loaded weekly via Lambda (manual trigger)
-2. **HTML Entity Decoding**: Clean text processing (&quot; → ", &#039; → ', &ouml; → ö)
-3. **Connection Reuse**: Persistent ElastiCache connections in Lambda
-4. **TTL Management**: Automatic cleanup of expired sessions, user state, and leaderboards
-5. **Batch Operations**: Efficient Redis-compatible commands
+- **Question Pre-loading**: 500 questions cached weekly for fast retrieval
+- **HTML Entity Decoding**: Clean text processing for better UX
+- **Connection Reuse**: Persistent ElastiCache connections in Lambda
+- **TTL Management**: Automatic cleanup of expired data
+- **Efficient Caching**: Redis-compatible commands for optimal performance
 
 ## 🔒 Security Features
 
