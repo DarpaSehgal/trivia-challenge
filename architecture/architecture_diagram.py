@@ -88,10 +88,22 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     igw >> Edge(style="dashed") >> nat
     nat >> Edge(style="dashed") >> lambda_preloader
     
-    # Clean legend at bottom
-    with Cluster("Legend", graph_attr={"rank": "sink", "style": "filled", "fillcolor": "lightgray", "fontsize": "12"}):
-        from diagrams import Node
-        # Create simple text nodes for legend
-        Node("━━━ Primary Data Flow\n┅┅┅ Response Flow\n••••• Authentication\n━━━ Scheduled Events", 
-             shape="note", style="filled", fillcolor="white", fontsize="10")
+    # Simple legend below diagram - 2x2 layout
+    from diagrams import Node
+    
+    # Row 1
+    legend1 = Node("Primary Data Flow", shape="plaintext", fontsize="10")
+    legend2 = Node("Response Flow", shape="plaintext", fontsize="10")
+    
+    # Row 2  
+    legend3 = Node("Authentication Flow", shape="plaintext", fontsize="10")
+    legend4 = Node("Scheduled Events", shape="plaintext", fontsize="10")
+    
+    # Legend arrows - Row 1
+    legend1 >> Edge() >> legend2
+    legend1 >> Edge(style="dashed") >> legend2
+    
+    # Legend arrows - Row 2
+    legend3 >> Edge(style="dotted") >> legend4
+    legend3 >> Edge(style="bold") >> legend4
     
