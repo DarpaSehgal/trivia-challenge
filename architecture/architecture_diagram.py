@@ -16,7 +16,7 @@ from diagrams.aws.integration import Eventbridge
 from diagrams.onprem.client import Users
 from diagrams.saas.cdn import Cloudflare
 
-with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", graph_attr={"rankdir": "TB", "ranksep": "1.5"}, edge_attr={"fontsize": "16", "labeldistance": "0.3", "labelangle": "0"}):
+with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", graph_attr={"rankdir": "TB", "ranksep": "1.5", "nodesep": "1.0"}, edge_attr={"fontsize": "16", "labeldistance": "0.3", "labelangle": "0"}):
     users = Users("Users")
     
     with Cluster("AWS Cloud"):
@@ -88,17 +88,10 @@ with Diagram("AWS Trivia Challenge Architecture", show=False, direction="TB", gr
     igw >> Edge(style="dashed") >> nat
     nat >> Edge(style="dashed") >> lambda_preloader
     
-    # Legend (using invisible nodes for positioning)
-    with Cluster("Legend", graph_attr={"style": "rounded", "bgcolor": "lightyellow"}):
+    # Clean legend at bottom
+    with Cluster("Legend", graph_attr={"rank": "sink", "style": "filled", "fillcolor": "lightgray", "fontsize": "12"}):
         from diagrams import Node
-        legend1 = Node("Primary Data Flow", shape="plaintext")
-        legend2 = Node("Response/Return Flow", shape="plaintext")
-        legend3 = Node("Authentication Flow", shape="plaintext")
-        legend4 = Node("Scheduled Events", shape="plaintext")
-        
-        # Legend arrows
-        legend1 >> Edge(label="") >> Node("", shape="point", width="0")
-        legend2 >> Edge(style="dashed", label="") >> Node("", shape="point", width="0")
-        legend3 >> Edge(style="dotted", label="") >> Node("", shape="point", width="0")
-        legend4 >> Edge(style="bold", label="") >> Node("", shape="point", width="0")
+        # Create simple text nodes for legend
+        Node("━━━ Primary Data Flow\n┅┅┅ Response Flow\n••••• Authentication\n━━━ Scheduled Events", 
+             shape="note", style="filled", fillcolor="white", fontsize="10")
     
