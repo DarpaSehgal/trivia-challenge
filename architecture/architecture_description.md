@@ -4,7 +4,7 @@
 
 ## Complete Data Flow Architecture
 
-The final architecture demonstrates proper AWS component placement with clear visual flow indicators:
+The architecture follows AWS best practices with the following data flows:
 
 **User Interaction Flow**
 - Users access the trivia application through CloudFront CDN for global performance
