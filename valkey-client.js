@@ -75,10 +75,36 @@ class ValkeyClient {
         try {
             const client = await this.connect();
             const key = `valkey:weekly_questions:${weekKey}`;
+            const metaKey = `valkey:weekly_questions_meta:${weekKey}`;
             await this.withTimeout(client.del(key), 2000);
+            await this.withTimeout(client.del(metaKey), 2000);
         } catch (error) {
             console.error('Delete weekly questions failed:', this.sanitizeLogMessage(error.message));
             throw error;
+        }
+    }
+
+    async storeWeeklyQuestionsMetadata(weekKey, metadata) {
+        try {
+            const client = await this.connect();
+            const sanitizedKey = String(weekKey).replace(/[^a-zA-Z0-9_-]/g, '');
+            const key = `valkey:weekly_questions_meta:${sanitizedKey}`;
+            await this.withTimeout(client.setex(key, 1209600, JSON.stringify(metadata)), 2000);
+        } catch (error) {
+            console.error('Store weekly questions metadata failed:', this.sanitizeLogMessage(error.message));
+            throw error;
+        }
+    }
+
+    async getWeeklyQuestionsMetadata(weekKey) {
+        try {
+            const client = await this.connect();
+            const key = `valkey:weekly_questions_meta:${weekKey}`;
+            const cached = await this.withTimeout(client.get(key), 2000);
+            return cached ? this.parseJsonSafely(cached) : null;
+        } catch (error) {
+            console.error('Get weekly questions metadata failed:', this.sanitizeLogMessage(error.message));
+            return null;
         }
     }
 

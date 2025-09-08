@@ -51,17 +51,23 @@ class QuestionPreloader {
         console.log(`Starting weekly question preload for week: ${sanitizeLogValue(weekKey)}`);
         
         try {
-            // Check if current week questions already exist (unless force update)
-            if (!this.forceUpdate) {
-                const existingQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
-                if (existingQuestions && existingQuestions.length >= TARGET_QUESTIONS_PER_WEEK) {
-                    console.log(`Week ${sanitizeLogValue(weekKey)} already has ${sanitizeLogValue(existingQuestions.length)} questions`);
+            // Always clear and reload questions for new week (unless it's the same day)
+            const existingQuestions = await valkeyClient.getWeeklyQuestions(weekKey);
+            
+            if (!this.forceUpdate && existingQuestions && existingQuestions.length >= TARGET_QUESTIONS_PER_WEEK) {
+                // Check if questions were loaded today (to avoid multiple loads on same day)
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                const questionMetadata = await valkeyClient.getWeeklyQuestionsMetadata(weekKey);
+                
+                if (questionMetadata && questionMetadata.loadDate === today) {
+                    console.log(`Week ${sanitizeLogValue(weekKey)} already loaded today with ${sanitizeLogValue(existingQuestions.length)} questions`);
                     return { success: true, questionsLoaded: existingQuestions.length };
                 }
-            } else {
-                console.log(`Force update requested - clearing existing questions for week ${sanitizeLogValue(weekKey)}`);
-                await valkeyClient.deleteWeeklyQuestions(weekKey);
             }
+            
+            // Clear existing questions for fresh weekly load
+            console.log(`Loading fresh questions for week ${sanitizeLogValue(weekKey)}`);
+            await valkeyClient.deleteWeeklyQuestions(weekKey);
 
             // Fetch questions (API_BATCH_COUNT API calls × 50 questions each)
             const allQuestions = [];
@@ -87,9 +93,18 @@ class QuestionPreloader {
                 }
             }
 
-            // Store questions for current week
+            // Store questions for current week with metadata
             if (allQuestions.length > 0) {
                 await valkeyClient.storeWeeklyQuestions(weekKey, allQuestions);
+                
+                // Store metadata about when questions were loaded
+                const metadata = {
+                    loadDate: new Date().toISOString().split('T')[0],
+                    loadTime: new Date().toISOString(),
+                    questionCount: allQuestions.length
+                };
+                await valkeyClient.storeWeeklyQuestionsMetadata(weekKey, metadata);
+                
                 console.log(`Stored ${sanitizeLogValue(allQuestions.length)} questions for week ${sanitizeLogValue(weekKey)}`);
                 
                 // Clean up previous week's questions
