@@ -2,6 +2,8 @@
 
 A serverless trivia application built with AWS Lambda and ElastiCache Serverless for Valkey, demonstrating real-world integration patterns and Valkey's key features.
 
+Users can sign up, play 5-question trivia sessions, and compete on a weekly leaderboard. Questions are sourced from the Open Trivia Database, cached for performance, and scoring rewards both accuracy and speed. The app showcases modern serverless architecture with proper caching, authentication, and real-time data management.
+
 ## 🏗️ Architecture
 
 ![AWS Trivia Challenge Architecture](architecture/aws_trivia_challenge_architecture.png)
