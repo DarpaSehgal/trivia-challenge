@@ -48,7 +48,7 @@ The architecture follows AWS best practices with the following data flows:
 **Application Layer:**
 - **Game Logic Lambda**: Main application logic with bidirectional ElastiCache connection
 - **Question Preloader Lambda**: Scheduled background service with complete external API flow
-- **ElastiCache Serverless**: In-memory cache with bidirectional Lambda connections
+- **ElastiCache Serverless for Valkey**: In-memory cache with bidirectional Lambda connections
 
 **External Integration:**
 - **OpenTDB API**: External trivia source accessed through complete network path
@@ -72,7 +72,7 @@ The architecture follows AWS best practices with the following data flows:
 
 1. **Complete User Flow**: User ↔ CloudFront ↔ S3 (bidirectional) + CloudFront → API Gateway → Lambda ↔ Response
 2. **Direct Authentication Flow**: User ↔ Cognito (global service, dotted arrows) → JWT Validation → Session Management
-3. **Bidirectional Caching**: Lambda ↔ ElastiCache (solid/dashed arrows for read/write operations)
+3. **Bidirectional Caching**: Lambda ↔ ElastiCache Serverless for Valkey (solid/dashed arrows for read/write operations)
 4. **Scheduled Question Flow**: EventBridge → Preloader Lambda (bold arrow) → NAT → Internet Gateway → OpenTDB API → Return Path
-5. **Network Isolation**: Internet Gateway at VPC boundary → Public Subnet (NAT) → Private Subnet (Lambda/ElastiCache)
+5. **Network Isolation**: Internet Gateway at VPC boundary → Public Subnet (NAT) → Private Subnet (Lambda/ElastiCache Serverless for Valkey)
 6. **Visual Flow Types**: Solid (primary), Dashed (response), Dotted (auth), Bold (scheduled events)
