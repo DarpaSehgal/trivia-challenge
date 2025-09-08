@@ -120,8 +120,9 @@ POST /submit-answer
 
 ## 🔧 Configuration
 
-### Environment Variables (Auto-configured)
-- `VALKEY_HOST`: ElastiCache Serverless endpoint
+### Environment Variables
+These are automatically set by CDK during deployment:
+- `VALKEY_HOST`: ElastiCache Serverless for Valkey endpoint
 - `COGNITO_USER_POOL_ID`: Cognito User Pool ID
 - `COGNITO_CLIENT_ID`: Cognito Client ID
 
