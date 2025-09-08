@@ -121,10 +121,15 @@ POST /submit-answer
 ## 🔧 Configuration
 
 ### Environment Variables
-These are automatically set by CDK during deployment:
+CDK automatically configures these Lambda environment variables during deployment:
 - `VALKEY_HOST`: ElastiCache Serverless for Valkey endpoint
 - `COGNITO_USER_POOL_ID`: Cognito User Pool ID
 - `COGNITO_CLIENT_ID`: Cognito Client ID
+
+### GitHub Actions Deployment
+For GitHub Actions deployment, set these secrets in your repository:
+- `AWS_ACCESS_KEY_ID`: Your AWS access key
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
 
 ### ElastiCache Data Structure
 ```
