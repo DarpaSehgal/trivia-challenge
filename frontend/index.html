@@ -546,6 +546,19 @@
                 return;
             }
             
+            // Check for invalid characters
+            const validUsernamePattern = /^[a-zA-Z0-9_-]+$/;
+            if (!validUsernamePattern.test(username)) {
+                let invalidChars = username.match(/[^a-zA-Z0-9_-]/g);
+                if (invalidChars) {
+                    const uniqueInvalid = [...new Set(invalidChars)];
+                    resultDiv.textContent = `Invalid characters: ${uniqueInvalid.join(', ')}. Use only letters, numbers, _ and -`;
+                    resultDiv.style.color = '#ff4444';
+                    resultDiv.style.display = 'block';
+                    return;
+                }
+            }
+            
             try {
                 const response = await fetch(`${API_BASE}/check-username`, {
                     method: 'POST',
@@ -573,7 +586,7 @@
             } catch (error) {
                 // Show error message on API failure
                 console.error('Username check API error:', error);
-                resultDiv.textContent = 'Username check unavailable. Please try signing up.';
+                resultDiv.textContent = 'Unable to check availability. Please try signing up.';
                 resultDiv.style.color = '#ff9900';
                 resultDiv.style.display = 'block';
             }
@@ -603,6 +616,17 @@
             if (displayName.length < 2 || displayName.length > 20) {
                 showError('signUpError', 'Username must be 2-20 characters long.');
                 return;
+            }
+            
+            // Check for invalid characters
+            const validUsernamePattern = /^[a-zA-Z0-9_-]+$/;
+            if (!validUsernamePattern.test(displayName)) {
+                let invalidChars = displayName.match(/[^a-zA-Z0-9_-]/g);
+                if (invalidChars) {
+                    const uniqueInvalid = [...new Set(invalidChars)];
+                    showError('signUpError', `Username contains invalid characters: ${uniqueInvalid.join(', ')}. Use only letters, numbers, underscore (_) and dash (-).`);
+                    return;
+                }
             }
             
             if (password !== confirmPassword) {
